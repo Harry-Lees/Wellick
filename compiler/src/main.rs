@@ -2,7 +2,6 @@ use std::env;
 use std::io::Read;
 use std::fs::File;
 
-mod lexer;
 use lexer::tokenize;
 
 fn main() -> Result<(), String> {

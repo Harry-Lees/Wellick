@@ -40,7 +40,7 @@ pub fn is_whitespace(c: char) -> bool {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenKind,
     pub line_no: u32,
