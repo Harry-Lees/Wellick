@@ -3,16 +3,14 @@ use std::io::Read;
 use std::fs::File;
 
 use lexer::tokenize;
+use parser::parse;
 
 fn main() -> Result<(), String> {
     let filename = get_file_name()?;
     let source = read_source_file(filename.as_str())?;
 
     let tokens = tokenize(source.as_str());
-    for token in tokens {
-        println!("{:?}", token);
-    }
-    println!("{}", source);
+    parse(Vec::from_iter(tokens));
 
     Ok(())
 }
