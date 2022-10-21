@@ -40,7 +40,7 @@ pub fn is_whitespace(c: char) -> bool {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Token {
     pub kind: TokenKind,
     pub line_no: u32,
@@ -78,11 +78,14 @@ impl Cursor<'_> {
                 self.advance_line();
                 TokenKind::Newline
             },
-            c @ '0'..='9' => {
-                self.eat_decimal_digits();
-                TokenKind::Number
+            '0'..='9' => {
+                let num: i32 =
+                    String::from_iter(self.eat_decimal_digits())
+                    .parse()
+                    .unwrap();
+                TokenKind::Number(num)
             },
-            c if first_char == '#' => {
+            '#' => {
                 self.line_comment();
                 TokenKind::Whitespace
             },
@@ -96,14 +99,21 @@ impl Cursor<'_> {
         res
     }
 
-    fn eat_decimal_digits(&mut self) {
+    fn eat_decimal_digits(&mut self) -> Vec<char> {
+        let mut num = Vec::new();
         loop {
             match self.first() {
-                '_' => self.bump(),
-                '0'..='9' => self.bump(),
+                '_' => {
+                    self.bump();
+                },
+                '0'..='9' => {
+                    let c = self.bump().unwrap();
+                    num.push(c);
+                }
                 _ => break,
             };
         }
+        num
     }
 
     /// Eats the identifier.

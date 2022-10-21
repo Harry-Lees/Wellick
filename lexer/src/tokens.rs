@@ -7,7 +7,7 @@ pub enum TokenKind {
     CloseParen,
     OpenBrace,
     CloseBrace,
-    Number,
+    Number(i32),
     Unknown,
     Whitespace,
     Newline,
