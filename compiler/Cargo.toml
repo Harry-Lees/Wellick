@@ -7,4 +7,5 @@ edition = "2021"
 
 [dependencies]
 unicode-xid = "0.2.4"
-lexer = { path = "../lexer"}
+lexer = { path = "../lexer" }
+parser = { path = "../parser" }
