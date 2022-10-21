@@ -27,6 +27,9 @@ impl Parser {
 
     /// Bump to the next token
     fn bump(&mut self) -> LexToken {
+        // TODO: This function can panic if there is an array out of bounds error.
+        // I think there's a way of not accessing array elements like this. This func
+        // should probably return a Result or Option instead.
         let token = self.tokens[self.current];
         self.current += 1;
         token
@@ -57,6 +60,12 @@ impl Parser {
             LexToken {kind: LexTokenKind::Number(num), .. } => Constant::new(num),
             token @ _ => return Err(format!("SyntaxError line {}: expected number, got {:?}", token.line_no, token.kind))
         };
+
+        let token = self.bump_no_whitespace();
+        if token.kind != LexTokenKind::Semicolon {
+            return Err(format!("SyntaxError line {}: expected semicolon", token.line_no));
+        }
+
         Ok(BinOp::new(operator, left, right))
     }
 
