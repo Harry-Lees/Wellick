@@ -41,15 +41,6 @@ impl Parser {
         token
     }
 
-    fn operator(&mut self) -> Result<ExprKind, String> {
-        let token = self.bump_no_whitespace();
-        match token.kind {
-            LexTokenKind::Plus => Ok(ExprKind::Add),
-            LexTokenKind::Minus => Ok(ExprKind::Sub),
-            _ => Err(format!("Expected operator, got {:?}", token))
-        }
-    }
-
     /// Parse a single expression
     /// expression -> NUMBER OPERATOR NUMBER SEMICOLON
     fn statement(&mut self) -> Result<BinOp, String> {
