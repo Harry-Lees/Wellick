@@ -1,6 +1,12 @@
-use nom::character::complete::multispace0;
+use crate::ast::Name;
+use nom::branch::alt;
+use nom::bytes::complete::tag;
+use nom::character::complete::{alpha1, alphanumeric1, multispace0};
+use nom::combinator::recognize;
 use nom::error::ParseError;
+use nom::multi::many0_count;
 use nom::sequence::delimited;
+use nom::sequence::pair;
 use nom::IResult;
 
 /// From the nom documentation
@@ -13,4 +19,26 @@ where
     F: Fn(&'a str) -> IResult<&'a str, O, E>,
 {
     delimited(multispace0, inner, multispace0)
+}
+
+pub fn identifier(input: &str) -> IResult<&str, &str> {
+    recognize(pair(
+        alt((alpha1, tag("_"))),
+        many0_count(alt((alphanumeric1, tag("_")))),
+    ))(input)
+}
+
+pub fn identifier_to_obj(input: &str) -> IResult<&str, Name> {
+    println!("identifier_to_obj {:?}", input);
+    let (i, ident) = recognize(pair(
+        alt((alpha1, tag("_"))),
+        many0_count(alt((alphanumeric1, tag("_")))),
+    ))(input)?;
+
+    Ok((
+        i,
+        Name {
+            ident: ident.to_string(),
+        },
+    ))
 }
