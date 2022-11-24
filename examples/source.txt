@@ -1,1 +1,7 @@
-Hello, World!
+fn main() {
+    x = 10;
+    y = 10;
+    if x == y {
+        print(10);
+    }
+}
