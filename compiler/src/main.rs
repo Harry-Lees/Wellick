@@ -1,14 +1,9 @@
-extern crate nom;
-pub mod ast;
-pub mod conditional;
-pub mod expressions;
-pub mod functions;
-pub mod helpers;
-pub mod literals;
+mod compiler;
+mod parser;
 
-use ast::*;
-use expressions::*;
 use nom::{multi::many0, IResult};
+use parser::ast::*;
+use parser::expressions::*;
 use std::fs;
 
 fn parse(input: &str) -> Result<Vec<Item>, &str> {
@@ -26,15 +21,17 @@ fn parse(input: &str) -> Result<Vec<Item>, &str> {
 
 fn main() {
     let contents = fs::read_to_string("./examples/source.txt").expect("unable to read file");
-    match parse(contents.as_str()) {
-        Ok(ast) => {
-            println!();
-            for item in ast {
-                println!("{:?}", item);
-            }
-        }
+    let ast = match parse(contents.as_str()) {
+        Ok(ast) => ast,
         Err(err) => {
             println!("{}", err);
+            return ();
         }
+    };
+
+    let aot_compiler = compiler::functions::Compiler::new();
+    match aot_compiler.compile(ast) {
+        Ok(_) => println!("successfully compiled ast..."),
+        Err(_) => println!("Failed to compile AST"),
     }
 }

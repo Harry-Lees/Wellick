@@ -1,4 +1,4 @@
-use crate::ast::Name;
+use crate::parser::ast::Name;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, alphanumeric1, multispace0};

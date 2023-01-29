@@ -1,7 +1,7 @@
-use crate::ast::{Atom, Compare, ComparisonOperator, Expression, Item};
-use crate::expressions::expression;
-use crate::helpers::{identifier_to_obj, ws};
-use crate::literals::literal;
+use crate::parser::ast::{Atom, Compare, ComparisonOperator, Expression};
+use crate::parser::expressions::expression;
+use crate::parser::helpers::{identifier_to_obj, ws};
+use crate::parser::literals::literal;
 
 use nom::branch::alt;
 use nom::bytes::complete::tag;

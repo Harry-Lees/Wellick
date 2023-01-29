@@ -1,8 +1,8 @@
-use crate::ast::{Assignment, Atom, Call, Expression, Item, Name};
-use crate::conditional::if_stmt;
-use crate::functions::function;
-use crate::helpers::{identifier, identifier_to_obj, ws};
-use crate::literals::literal;
+use crate::parser::ast::{Assignment, Atom, Call, Expression, Item, Name};
+use crate::parser::conditional::if_stmt;
+use crate::parser::functions::function;
+use crate::parser::helpers::{identifier, identifier_to_obj, ws};
+use crate::parser::literals::literal;
 
 use nom::branch::alt;
 use nom::bytes::complete::{is_not, tag};

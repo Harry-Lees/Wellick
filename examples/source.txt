@@ -1,7 +1,5 @@
-fn main() {
-    x = 10;
-    y = 10;
-    if x == y {
-        print(10);
-    }
+fn main(x: f32) {
+}
+
+fn other(y: isize) {
 }

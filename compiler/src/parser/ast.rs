@@ -3,18 +3,44 @@ pub enum Keyword {
     Return,
 }
 
+// Types supported by the language
+#[derive(Debug)]
+pub enum Type {
+    isize,
+    f32,
+    f64,
+}
+
 #[derive(Debug)]
 pub struct Assignment {
     pub target: Name,
     pub value: Atom,
 }
 
+#[derive(Debug)]
+pub struct FnArg {
+    pub name: String,
+    pub t: Type,
+}
+
+impl FnArg {
+    pub fn new(name: String, t: Type) -> Self {
+        Self { name, t }
+    }
+}
+
 /// Function declaration AST node
 #[derive(Debug)]
 pub struct FnDecl {
     pub name: String,
-    pub args: Vec<Name>,
+    pub args: Vec<FnArg>,
     pub body: Vec<Expression>,
+}
+
+impl FnDecl {
+    pub fn new(name: String, args: Vec<FnArg>, body: Vec<Expression>) -> Self {
+        Self { name, args, body }
+    }
 }
 
 #[derive(Debug)]
