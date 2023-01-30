@@ -1,4 +1,4 @@
-use crate::parser::ast::Name;
+use super::ast::Name;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, alphanumeric1, multispace0};
@@ -21,6 +21,8 @@ where
     delimited(multispace0, inner, multispace0)
 }
 
+/// From the nom [docs](https://github.com/rust-bakery/nom/blob/main/doc/nom_recipes.md#rust-style-identifiers)
+/// A parser that mimics Rust style identifiers.
 pub fn identifier(input: &str) -> IResult<&str, &str> {
     recognize(pair(
         alt((alpha1, tag("_"))),
@@ -28,6 +30,8 @@ pub fn identifier(input: &str) -> IResult<&str, &str> {
     ))(input)
 }
 
+/// From the nom [docs](https://github.com/rust-bakery/nom/blob/main/doc/nom_recipes.md#rust-style-identifiers)
+/// A parser that mimics Rust style identifiers and returns a Name object.
 pub fn identifier_to_obj(input: &str) -> IResult<&str, Name> {
     dbg!("identifier_to_obj {:?}", input);
     let (i, ident) = recognize(pair(

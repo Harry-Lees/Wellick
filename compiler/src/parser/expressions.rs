@@ -1,8 +1,9 @@
-use crate::parser::ast::{Assignment, Atom, Call, Expression, Item};
-use crate::parser::conditional::if_stmt;
-use crate::parser::functions::function;
-use crate::parser::helpers::{identifier, identifier_to_obj, ws};
-use crate::parser::literals::literal;
+use super::ast::{Assignment, Atom, Call, Expression, Item};
+use super::conditional::if_stmt;
+use super::functions::arg_type;
+use super::functions::function;
+use super::helpers::{identifier, identifier_to_obj, ws};
+use super::literals::literal;
 
 use nom::branch::alt;
 use nom::bytes::complete::tag;
@@ -13,8 +14,6 @@ use nom::sequence::preceded;
 use nom::sequence::terminated;
 use nom::sequence::{delimited, tuple};
 use nom::IResult;
-
-use super::functions::arg_type;
 
 // pub fn peol_comment<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, (), E> {
 //     value(
