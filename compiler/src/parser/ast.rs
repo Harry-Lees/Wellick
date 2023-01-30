@@ -77,7 +77,6 @@ pub struct Name {
 #[derive(Debug, Clone, Copy)]
 pub enum ComparisonOperator {
     Eq,
-    NotEq,
     Gt,
     Lt,
 }
@@ -99,12 +98,6 @@ pub struct Compare {
 pub struct Constant {
     pub value: String,
     pub _type: String,
-}
-
-#[derive(Debug)]
-pub enum Stmt {
-    Item(Item),
-    Expr(Expression),
 }
 
 #[derive(Debug)]

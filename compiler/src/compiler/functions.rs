@@ -134,23 +134,12 @@ impl Compiler {
         function_builder.switch_to_block(entry_block);
         function_builder.append_block_params_for_function_params(entry_block);
 
-        let int = self.module.target_config().pointer_type();
-        let mut vars = declare_variables(
-            int,
-            &mut function_builder,
-            &node.args,
-            &node.body,
-            entry_block,
-        );
+        let mut vars =
+            declare_variables(&mut function_builder, &node.args, &node.body, entry_block);
 
         for expr in &node.body {
             if let ast::Expression::Assign(assign) = expr {
-                translate_assign(
-                    assign.target.ident.clone(),
-                    &assign,
-                    &mut function_builder,
-                    &mut vars,
-                );
+                translate_assign(&assign, &mut function_builder, &mut vars);
             }
         }
 
@@ -185,28 +174,25 @@ impl Compiler {
 }
 
 fn translate_assign(
-    name: String,
     expr: &ast::Assignment,
     function_builder: &mut FunctionBuilder,
     variables: &mut HashMap<String, Variable>,
 ) -> Value {
+    let name = &expr.target.ident;
     let var = variables
-        .get(&name)
+        .get(name)
         .expect(format!("No variable named {}", name).as_str());
-    println!("var: {name}, {var}");
-    // let value = match expr.value {
-    //     ast::Atom::Name(_) => {
-    //         todo!();
-    //     }
-    //     ast::Atom::Constant(value) => value,
-    // };
-    let value = function_builder.ins().iconst(types::I64, 0);
+    let value = match &expr.value {
+        ast::Value::Float(val) => function_builder.ins().f64const(*val as f64),
+        ast::Value::Integer(val) => function_builder.ins().iconst(types::I64, *val as i64),
+    };
+    println!("var: {:?}, {var}, {:?}", expr, value);
+
     function_builder.def_var(*var, value);
     value
 }
 
 fn declare_variables(
-    int: types::Type,
     builder: &mut FunctionBuilder,
     args: &Vec<ast::FnArg>,
     stmts: &Vec<ast::Expression>,
@@ -217,7 +203,13 @@ fn declare_variables(
 
     for (i, arg) in args.iter().enumerate() {
         let val = builder.block_params(entry_block)[i];
-        let var = declare_variable(int, builder, &mut variables, &mut index, &arg.name);
+        let var = declare_variable(
+            to_cranelift_type(&arg.t),
+            builder,
+            &mut variables,
+            &mut index,
+            &arg.name,
+        );
         builder.def_var(var, val);
     }
 
@@ -236,6 +228,7 @@ fn declare_variable(
     index: &mut usize,
     name: &str,
 ) -> Variable {
+    dbg!(var_type);
     let var = Variable::from_u32(*index as u32);
     if !variables.contains_key(name) {
         variables.insert(name.into(), var);
@@ -253,6 +246,7 @@ fn declare_variables_in_stmt(
     index: &mut usize,
     expr: &ast::Expression,
 ) -> Variable {
+    dbg!(expr);
     match expr {
         ast::Expression::Assign(ref assignment) => declare_variable(
             value_type(&assignment.value),
