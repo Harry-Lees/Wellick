@@ -1,5 +1,7 @@
-fn main(x: f32) {
+fn main(x: isize) -> isize {
+    x: isize = 10;
+    y: isize = 10;
 }
 
-fn other(y: isize) {
+fn other(y: isize) -> isize {
 }
