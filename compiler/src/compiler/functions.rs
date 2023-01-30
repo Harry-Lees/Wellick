@@ -11,18 +11,22 @@ use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::{DataContext, Linkage, Module};
 use cranelift_native::builder as host_isa_builder;
 use cranelift_object::{ObjectBuilder, ObjectModule};
-use lazy_static;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::Write;
 
-lazy_static! {
-    // Static mapping between AST types and Cranelift IR types
-    static ref TYPE_MAP: HashMap<ast::Type, types::Type> = { HashMap::from([
-        (ast::Type::f32, types::F32),
-        (ast::Type::f64, types::F64),
-        (ast::Type::isize, types::Type::int_with_byte_size(8).unwrap())
-    ]) };
+fn to_cranelift_type(t: &ast::EmptyType) -> types::Type {
+    match t {
+        ast::EmptyType::Float => types::F64,
+        ast::EmptyType::Integer => types::I64,
+    }
+}
+
+fn value_type(t: &ast::Value) -> types::Type {
+    match t {
+        ast::Value::Float(_) => types::F64,
+        ast::Value::Integer(_) => types::I64,
+    }
 }
 
 pub struct Compiler {
@@ -106,20 +110,21 @@ impl Compiler {
     fn translate_decl(&mut self, node: ast::FnDecl) {
         // Define function arguments
         for arg in &node.args {
-            let arg_type = TYPE_MAP.get(&arg.t).unwrap().clone();
+            let t = to_cranelift_type(&arg.t);
             self.codegen_context
                 .func
                 .signature
                 .params
-                .push(AbiParam::new(arg_type))
+                .push(AbiParam::new(t))
         }
 
         if let Some(ret_type) = &node.ret_type {
+            let t = to_cranelift_type(&ret_type);
             self.codegen_context
                 .func
                 .signature
                 .returns
-                .push(AbiParam::new(TYPE_MAP.get(&ret_type).unwrap().clone()));
+                .push(AbiParam::new(t));
         }
 
         let mut function_builder =
@@ -150,8 +155,8 @@ impl Compiler {
         }
 
         if let Some(ret_type) = &node.ret_type {
-            let ir_ret_type = TYPE_MAP.get(&ret_type).unwrap().clone();
-            let value = function_builder.ins().iconst(ir_ret_type, 0);
+            let t = to_cranelift_type(&ret_type);
+            let value = function_builder.ins().iconst(t, 0);
             function_builder.ins().return_(&[value]);
         }
 
@@ -250,7 +255,7 @@ fn declare_variables_in_stmt(
 ) -> Variable {
     match expr {
         ast::Expression::Assign(ref assignment) => declare_variable(
-            TYPE_MAP.get(&assignment.var_type).unwrap().clone(),
+            value_type(&assignment.value),
             builder,
             variables,
             index,

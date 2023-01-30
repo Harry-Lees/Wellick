@@ -1,3 +1,4 @@
+use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::space1;
 use nom::combinator::{map, opt};
@@ -6,9 +7,17 @@ use nom::sequence::{delimited, separated_pair, terminated};
 use nom::sequence::{preceded, tuple};
 use nom::IResult;
 
-use super::ast::{FnArg, FnDecl};
+use super::ast::{EmptyType, FnArg, FnDecl};
 use super::expressions::expression;
-use super::helpers::{arg_type, identifier, ws};
+use super::helpers::{identifier, ws};
+
+pub fn arg_type(input: &str) -> IResult<&str, EmptyType> {
+    map(alt((tag("float"), tag("int"))), |val| match val {
+        "float" => EmptyType::Float,
+        "int" => EmptyType::Integer,
+        _ => panic!(),
+    })(input)
+}
 
 fn function_args(input: &str) -> IResult<&str, Vec<FnArg>> {
     map(

@@ -1,38 +1,39 @@
 use std::option::Option;
 
-// Types supported by the language
-#[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
-pub enum Type {
-    isize,
-    f32,
-    f64,
+/// Types supported by the language which also hold the corresponding
+/// value, used in AST constructs like assignments
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub enum Value {
+    Float(f32),
+    Integer(isize),
+}
+
+#[derive(Debug, Clone)]
+pub enum EmptyType {
+    Float,
+    Integer,
 }
 
 #[derive(Debug, Clone)]
 pub struct Assignment {
     pub target: Name,
-    pub var_type: Type,
-    pub value: Atom,
+    pub value: Value,
 }
 
 impl Assignment {
-    pub fn new(target: Name, var_type: Type, value: Atom) -> Self {
-        Self {
-            target,
-            var_type,
-            value,
-        }
+    pub fn new(target: Name, value: Value) -> Self {
+        Self { target, value }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct FnArg {
     pub name: String,
-    pub t: Type,
+    pub t: EmptyType,
 }
 
 impl FnArg {
-    pub fn new(name: String, t: Type) -> Self {
+    pub fn new(name: String, t: EmptyType) -> Self {
         Self { name, t }
     }
 }
@@ -42,7 +43,7 @@ impl FnArg {
 pub struct FnDecl {
     pub name: String,
     pub args: Vec<FnArg>,
-    pub ret_type: Option<Type>,
+    pub ret_type: Option<EmptyType>,
     pub body: Vec<Expression>,
 }
 
@@ -50,7 +51,7 @@ impl FnDecl {
     pub fn new(
         name: String,
         args: Vec<FnArg>,
-        ret_type: Option<Type>,
+        ret_type: Option<EmptyType>,
         body: Vec<Expression>,
     ) -> Self {
         Self {
@@ -84,7 +85,7 @@ pub enum ComparisonOperator {
 #[derive(Debug, Clone)]
 pub enum Atom {
     Name(Name),
-    Constant(Constant),
+    Constant(Value),
 }
 
 #[derive(Debug, Clone)]

@@ -1,7 +1,7 @@
-use crate::parser::ast::{Assignment, Atom, Call, Expression, Item, Name};
+use crate::parser::ast::{Assignment, Atom, Call, Expression, Item};
 use crate::parser::conditional::if_stmt;
 use crate::parser::functions::function;
-use crate::parser::helpers::{arg_type, identifier, identifier_to_obj, ws};
+use crate::parser::helpers::{identifier, identifier_to_obj, ws};
 use crate::parser::literals::literal;
 
 use nom::branch::alt;
@@ -9,10 +9,12 @@ use nom::bytes::complete::tag;
 use nom::character::complete::{char, multispace0};
 use nom::combinator::{map, opt};
 use nom::multi::separated_list0;
-use nom::sequence::separated_pair;
+use nom::sequence::preceded;
 use nom::sequence::terminated;
 use nom::sequence::{delimited, tuple};
 use nom::IResult;
+
+use super::functions::arg_type;
 
 // pub fn peol_comment<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, (), E> {
 //     value(
@@ -67,12 +69,11 @@ pub fn assignment(input: &str) -> IResult<&str, Assignment> {
     map(
         tuple((
             identifier_to_obj,
-            ws(tag(":")),
-            arg_type,
+            opt(preceded(ws(tag(":")), arg_type)),
             ws(char('=')),
             literal,
         )),
-        |(target, _, var_type, _, value)| Assignment::new(target, var_type, Atom::Constant(value)),
+        |(target, _, _, value)| Assignment::new(target, value),
     )(input)
 }
 
