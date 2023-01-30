@@ -1,8 +1,3 @@
-use crate::parser::ast::{FnArg, FnDecl, Type};
-use crate::parser::expressions::expression;
-use crate::parser::helpers::{identifier, ws};
-
-use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::space1;
 use nom::combinator::{map, opt};
@@ -11,14 +6,9 @@ use nom::sequence::{delimited, separated_pair, terminated};
 use nom::sequence::{preceded, tuple};
 use nom::IResult;
 
-fn arg_type(input: &str) -> IResult<&str, Type> {
-    map(alt((tag("f32"), tag("f64"), tag("isize"))), |t| match t {
-        "isize" => Type::isize,
-        "f32" => Type::f32,
-        "f64" => Type::f64,
-        _ => panic!("unexpected type found while parsing"),
-    })(input)
-}
+use super::ast::{FnArg, FnDecl};
+use super::expressions::expression;
+use super::helpers::{arg_type, identifier, ws};
 
 fn function_args(input: &str) -> IResult<&str, Vec<FnArg>> {
     map(
@@ -39,8 +29,11 @@ pub fn function(input: &str) -> IResult<&str, FnDecl> {
         tuple((
             preceded(terminated(tag("fn"), space1), identifier),
             delimited(ws(tag("(")), function_args, ws(tag(")"))),
+            opt(preceded(ws(tag("->")), arg_type)),
             delimited(ws(tag("{")), many0(expression), ws(tag("}"))),
         )),
-        |(fn_name, fn_args, body)| FnDecl::new(fn_name.to_string(), fn_args, body),
+        |(fn_name, fn_args, ret_type, body)| {
+            FnDecl::new(fn_name.to_string(), fn_args, ret_type, body)
+        },
     )(input)
 }

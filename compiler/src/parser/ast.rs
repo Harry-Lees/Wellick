@@ -1,23 +1,36 @@
-pub enum Keyword {
-    Pass,
-    Return,
-}
+use std::option::Option;
+
+// pub enum Keyword {
+//     Pass,
+//     Return,
+// }
 
 // Types supported by the language
-#[derive(Debug)]
+#[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
 pub enum Type {
     isize,
     f32,
     f64,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Assignment {
     pub target: Name,
+    pub var_type: Type,
     pub value: Atom,
 }
 
-#[derive(Debug)]
+impl Assignment {
+    pub fn new(target: Name, var_type: Type, value: Atom) -> Self {
+        Self {
+            target,
+            var_type,
+            value,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct FnArg {
     pub name: String,
     pub t: Type,
@@ -30,31 +43,42 @@ impl FnArg {
 }
 
 /// Function declaration AST node
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FnDecl {
     pub name: String,
     pub args: Vec<FnArg>,
+    pub ret_type: Option<Type>,
     pub body: Vec<Expression>,
 }
 
 impl FnDecl {
-    pub fn new(name: String, args: Vec<FnArg>, body: Vec<Expression>) -> Self {
-        Self { name, args, body }
+    pub fn new(
+        name: String,
+        args: Vec<FnArg>,
+        ret_type: Option<Type>,
+        body: Vec<Expression>,
+    ) -> Self {
+        Self {
+            name,
+            args,
+            ret_type,
+            body,
+        }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Call {
     pub func: String,
     pub args: Vec<Atom>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Name {
     pub ident: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum ComparisonOperator {
     Eq,
     NotEq,
@@ -62,20 +86,20 @@ pub enum ComparisonOperator {
     Lt,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Atom {
     Name(Name),
     Constant(Constant),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Compare {
     pub left: Atom,
     pub op: ComparisonOperator,
     pub right: Atom,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Constant {
     pub value: String,
     pub _type: String,
@@ -92,7 +116,7 @@ pub enum Item {
     FnDecl(FnDecl),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Assign(Assignment),
     Call(Call),

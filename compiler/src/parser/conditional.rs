@@ -65,7 +65,7 @@ pub fn comparison(input: &str) -> IResult<&str, Compare> {
 }
 
 pub fn if_stmt(input: &str) -> IResult<&str, (Compare, Vec<Expression>, Option<Vec<Expression>>)> {
-    println!("parse if_stmt {:?}", input);
+    dbg!("parse if_stmt {:?}", input);
     map(
         tuple((
             preceded(tag("if"), ws(comparison)),
