@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 mod compiler;
 mod parser;
 
@@ -30,6 +33,7 @@ fn main() {
     };
 
     let aot_compiler = compiler::functions::Compiler::new();
+
     match aot_compiler.compile(ast) {
         Ok(_) => println!("successfully compiled ast..."),
         Err(_) => println!("Failed to compile AST"),
