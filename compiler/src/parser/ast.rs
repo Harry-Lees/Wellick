@@ -1,10 +1,5 @@
 use std::option::Option;
 
-// pub enum Keyword {
-//     Pass,
-//     Return,
-// }
-
 // Types supported by the language
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
 pub enum Type {
