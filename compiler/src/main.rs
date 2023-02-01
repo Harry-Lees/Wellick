@@ -29,7 +29,7 @@ fn main() {
         }
     };
 
-    let aot_compiler = compiler::Compiler::new();
+    let aot_compiler = compiler::Compiler::default();
 
     match aot_compiler.compile(ast) {
         Ok(_) => println!("successfully compiled ast..."),
