@@ -37,8 +37,6 @@ fn comparison_operator(input: &str) -> IResult<&str, ComparisonOperator> {
 // comparison_operator = "==" | "!="
 // comparison := identifier | literal comparison_operator identifier | literal;
 pub fn comparison(input: &str) -> IResult<&str, Compare> {
-    println!("parse comparison {:?}", input);
-
     // Parse the left side of the comparison
     let (i, left) = alt((
         map(ws(identifier_to_obj), |val| Atom::Name(val)),
@@ -65,7 +63,6 @@ pub fn comparison(input: &str) -> IResult<&str, Compare> {
 }
 
 pub fn if_stmt(input: &str) -> IResult<&str, (Compare, Vec<Expression>, Option<Vec<Expression>>)> {
-    dbg!("parse if_stmt {:?}", input);
     map(
         tuple((
             preceded(tag("if"), ws(comparison)),

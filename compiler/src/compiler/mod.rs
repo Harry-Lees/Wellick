@@ -10,6 +10,7 @@ use cranelift_native::builder as host_isa_builder;
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use std::fs::File;
 use std::io::prelude::Write;
+use std::process;
 
 pub struct Compiler {
     builder_context: FunctionBuilderContext,
@@ -104,13 +105,20 @@ impl Compiler {
                 .push(AbiParam::new(t))
         }
 
-        if let Some(ret_type) = &node.ret_type {
-            let t = translate::to_cranelift_type(&ret_type);
-            self.codegen_context
-                .func
-                .signature
-                .returns
-                .push(AbiParam::new(t));
+        // Define the function return type.
+        match &node.ret_type {
+            Some(ret_type) => {
+                let t = translate::to_cranelift_type(&ret_type);
+                self.codegen_context
+                    .func
+                    .signature
+                    .returns
+                    .push(AbiParam::new(t));
+            }
+            None => {
+                println!("No return type defined for func {}", &node.name);
+                process::exit(1)
+            }
         }
 
         let mut function_builder =
@@ -132,12 +140,6 @@ impl Compiler {
 
         for expr in node.body {
             translator.translate_expr(&expr);
-        }
-
-        if let Some(ret_type) = &node.ret_type {
-            let t = translate::to_cranelift_type(&ret_type);
-            let value = translator.builder.ins().iconst(t, 0);
-            translator.builder.ins().return_(&[value.to_owned()]);
         }
 
         translator.builder.seal_block(entry_block);

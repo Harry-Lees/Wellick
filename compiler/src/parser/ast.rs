@@ -1,5 +1,24 @@
 use std::option::Option;
 
+#[derive(Debug, Clone)]
+pub struct Return {
+    pub value: Value,
+}
+
+impl Return {
+    pub fn new(value: Value) -> Self {
+        Self { value }
+    }
+}
+
+impl Default for Return {
+    fn default() -> Self {
+        Self {
+            value: Value::Integer(0),
+        }
+    }
+}
+
 /// Types supported by the language which also hold the corresponding
 /// value, used in AST constructs like assignments
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -110,4 +129,5 @@ pub enum Expression {
     Assign(Assignment),
     Call(Call),
     If(Compare, Vec<Expression>, Option<Vec<Expression>>),
+    Return(Return),
 }

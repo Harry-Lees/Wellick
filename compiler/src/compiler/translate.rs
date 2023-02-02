@@ -62,7 +62,6 @@ pub(crate) fn declare_variable(
     index: &mut usize,
     name: &str,
 ) -> Variable {
-    dbg!(var_type);
     let var = Variable::from_u32(*index as u32);
     if !variables.contains_key(name) {
         variables.insert(name.into(), var);
@@ -79,22 +78,27 @@ pub(crate) fn declare_variables_in_stmt(
     variables: &mut HashMap<String, Variable>,
     index: &mut usize,
     expr: &ast::Expression,
-) -> Variable {
-    dbg!(expr);
+) {
     match expr {
-        ast::Expression::Assign(ref assignment) => declare_variable(
-            value_type(&assignment.value),
-            builder,
-            variables,
-            index,
-            assignment.target.ident.as_ref(),
-        ),
-        ast::Expression::Call(_) => {
-            todo!();
+        ast::Expression::Assign(ref assignment) => {
+            declare_variable(
+                value_type(&assignment.value),
+                builder,
+                variables,
+                index,
+                assignment.target.ident.as_ref(),
+            );
         }
-        ast::Expression::If(_, _, _) => {
-            todo!();
+        ast::Expression::Return(ref _return) => {
+            declare_variable(
+                value_type(&_return.value),
+                builder,
+                variables,
+                index,
+                "return",
+            );
         }
+        _ => {}
     }
 }
 
@@ -117,12 +121,36 @@ impl<'a> FunctionTranslator<'a> {
         }
     }
 
+    pub(crate) fn to_cranelift_value(&mut self, t: &ast::Value) -> Value {
+        match t {
+            ast::Value::Integer(val) => Value::from_u32(*val as u32),
+            ast::Value::Float(val) => self.builder.ins().f32const(*val),
+        }
+    }
+
     pub fn translate_expr(&mut self, expr: &ast::Expression) -> Value {
         match expr {
             ast::Expression::Assign(val) => self.translate_assign(val),
             ast::Expression::If(_, _, _) => todo!(),
             ast::Expression::Call(_) => todo!(),
+            ast::Expression::Return(val) => self.translate_return(val),
         }
+    }
+
+    fn translate_return(&mut self, expr: &ast::Return) -> Value {
+        let name = "return";
+        let var = self
+            .variables
+            .get(name)
+            .expect("No return variable specified");
+        // let value = self.to_cranelift_value(&expr.value);
+        let value = match &expr.value {
+            ast::Value::Float(val) => self.builder.ins().f64const(*val as f64),
+            ast::Value::Integer(val) => self.builder.ins().iconst(types::I64, *val as i64),
+        };
+        self.builder.def_var(*var, value);
+        self.builder.ins().return_(&[value]);
+        value
     }
 
     fn translate_assign(&mut self, expr: &ast::Assignment) -> Value {

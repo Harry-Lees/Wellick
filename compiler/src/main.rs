@@ -29,6 +29,8 @@ fn main() {
         }
     };
 
+    dbg!(&ast);
+
     let aot_compiler = compiler::Compiler::default();
 
     match aot_compiler.compile(ast) {

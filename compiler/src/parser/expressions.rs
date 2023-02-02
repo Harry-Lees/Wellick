@@ -1,4 +1,4 @@
-use super::ast::{Assignment, Atom, Call, Expression, Item};
+use super::ast::{Assignment, Atom, Call, Expression, Item, Return};
 use super::conditional::if_stmt;
 use super::functions::arg_type;
 use super::functions::function;
@@ -22,14 +22,18 @@ use nom::IResult;
 //     )(i)
 // }
 
+pub fn return_(input: &str) -> IResult<&str, Return> {
+    map(preceded(ws(tag("return")), literal), |value| {
+        Return::new(value)
+    })(input)
+}
+
 /// Parse an Item
 pub fn item(input: &str) -> IResult<&str, Item> {
     map(function, |x| Item::FnDecl(x))(input)
 }
 
 pub fn func_call(input: &str) -> IResult<&str, Call> {
-    dbg!("parse function call {:?}", input);
-
     map(
         tuple((
             // The function name
@@ -63,8 +67,6 @@ pub fn func_call(input: &str) -> IResult<&str, Call> {
 /// let <var_name>: <var_type> = <value>
 /// e.g. let x: f32 = 10.0;
 pub fn assignment(input: &str) -> IResult<&str, Assignment> {
-    dbg!("parse_assignment {:?}", input);
-
     map(
         tuple((
             identifier_to_obj,
@@ -77,7 +79,6 @@ pub fn assignment(input: &str) -> IResult<&str, Assignment> {
 }
 
 pub fn expression(input: &str) -> IResult<&str, Expression> {
-    dbg!("parse expression {:?}", input);
     delimited(
         multispace0,
         alt((
@@ -85,6 +86,9 @@ pub fn expression(input: &str) -> IResult<&str, Expression> {
             map(terminated(func_call, char(';')), |x| Expression::Call(x)),
             map(if_stmt, |(cond, if_then, else_then)| {
                 Expression::If(cond, if_then, else_then)
+            }),
+            map(terminated(return_, tag(";")), |value| {
+                Expression::Return(value)
             }),
         )),
         multispace0,

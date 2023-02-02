@@ -61,6 +61,5 @@ fn float(input: &str) -> IResult<&str, Value> {
 }
 
 pub fn literal(input: &str) -> IResult<&str, Value> {
-    dbg!("literal {:?}", input);
     alt((float, hexadecimal, octal, decimal))(input)
 }
