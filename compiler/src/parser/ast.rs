@@ -1,24 +1,5 @@
 use std::option::Option;
 
-#[derive(Debug, Clone)]
-pub struct Return {
-    pub value: Value,
-}
-
-impl Return {
-    pub fn new(value: Value) -> Self {
-        Self { value }
-    }
-}
-
-impl Default for Return {
-    fn default() -> Self {
-        Self {
-            value: Value::Integer(0),
-        }
-    }
-}
-
 /// Types supported by the language which also hold the corresponding
 /// value, used in AST constructs like assignments
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -63,7 +44,7 @@ pub struct FnDecl {
     pub name: String,
     pub args: Vec<FnArg>,
     pub ret_type: Option<EmptyType>,
-    pub body: Vec<Expression>,
+    pub body: Vec<Stmt>,
 }
 
 impl FnDecl {
@@ -71,7 +52,7 @@ impl FnDecl {
         name: String,
         args: Vec<FnArg>,
         ret_type: Option<EmptyType>,
-        body: Vec<Expression>,
+        body: Vec<Stmt>,
     ) -> Self {
         Self {
             name,
@@ -101,33 +82,22 @@ pub enum ComparisonOperator {
 }
 
 #[derive(Debug, Clone)]
-pub enum Atom {
-    Name(Name),
-    Constant(Value),
-}
-
-#[derive(Debug, Clone)]
-pub struct Compare {
-    pub left: Atom,
-    pub op: ComparisonOperator,
-    pub right: Atom,
-}
-
-#[derive(Debug, Clone)]
 pub struct Constant {
     pub value: String,
     pub _type: String,
 }
 
-#[derive(Debug)]
-pub enum Item {
-    FnDecl(FnDecl),
+#[derive(Debug, Clone)]
+pub enum Expression {
+    Call(Call),
+    Comparison(Box<Expression>, ComparisonOperator, Box<Expression>),
+    Literal(Value),
+    Identifier(String),
 }
 
 #[derive(Debug, Clone)]
-pub enum Expression {
+pub enum Stmt {
+    Return(Expression),
+    If(Expression, Vec<Stmt>, Option<Vec<Stmt>>),
     Assign(Assignment),
-    Call(Call),
-    If(Compare, Vec<Expression>, Option<Vec<Expression>>),
-    Return(Return),
 }

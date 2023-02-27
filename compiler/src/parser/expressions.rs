@@ -1,18 +1,14 @@
-use super::ast::{Assignment, Call, Expression, Item, Return};
-use super::conditional::if_stmt;
-use super::functions::arg_type;
-use super::functions::function;
+use super::ast::{Call, ComparisonOperator, Expression};
 use super::helpers::{identifier, identifier_to_obj, ws};
 use super::literals::literal;
 
 use nom::branch::alt;
-use nom::bytes::complete::tag;
+use nom::bytes::complete::{tag, take};
 use nom::character::complete::{char, multispace0};
 use nom::combinator::{map, opt};
+use nom::error::{context, Error};
 use nom::multi::separated_list0;
-use nom::sequence::preceded;
-use nom::sequence::terminated;
-use nom::sequence::{delimited, tuple};
+use nom::sequence::{delimited, terminated, tuple};
 use nom::IResult;
 
 // pub fn peol_comment<'a, E: ParseError<&'a str>>(i: &'a str) -> IResult<&'a str, (), E> {
@@ -22,18 +18,8 @@ use nom::IResult;
 //     )(i)
 // }
 
-pub fn return_(input: &str) -> IResult<&str, Return> {
-    map(preceded(ws(tag("return")), literal), |value| {
-        Return::new(value)
-    })(input)
-}
-
-/// Parse an Item
-pub fn item(input: &str) -> IResult<&str, Item> {
-    map(function, |x| Item::FnDecl(x))(input)
-}
-
 pub fn func_call(input: &str) -> IResult<&str, Call> {
+    println!("In func_call {input:?}");
     map(
         tuple((
             // The function name
@@ -57,34 +43,64 @@ pub fn func_call(input: &str) -> IResult<&str, Call> {
     )(input)
 }
 
-/// Parse assignment in the form
-/// let <var_name>: <var_type> = <value>
-/// e.g. let x: f32 = 10.0;
-pub fn assignment(input: &str) -> IResult<&str, Assignment> {
-    map(
-        tuple((
-            identifier_to_obj,
-            opt(preceded(ws(tag(":")), arg_type)),
-            ws(char('=')),
-            literal,
-        )),
-        |(target, _, _, value)| Assignment::new(target, value),
-    )(input)
+fn eq(input: &str) -> IResult<&str, ComparisonOperator> {
+    let (i, _) = tag("==")(input)?;
+    Ok((i, ComparisonOperator::Eq))
+}
+
+fn not_eq(input: &str) -> IResult<&str, ComparisonOperator> {
+    let (i, _) = tag("!=")(input)?;
+    Ok((i, ComparisonOperator::Eq))
+}
+
+fn lt(input: &str) -> IResult<&str, ComparisonOperator> {
+    let (i, _) = tag("<")(input)?;
+    Ok((i, ComparisonOperator::Lt))
+}
+
+fn gt(input: &str) -> IResult<&str, ComparisonOperator> {
+    let (i, _) = tag(">")(input)?;
+    Ok((i, ComparisonOperator::Gt))
+}
+
+fn comparison_operator(input: &str) -> IResult<&str, ComparisonOperator> {
+    alt((lt, gt, eq, not_eq))(input)
+}
+
+/// comparison_operator = "==" | "!="
+/// comparison := identifier | literal comparison_operator identifier | literal;
+pub fn comparison(
+    input: &str,
+) -> IResult<&str, (Box<Expression>, ComparisonOperator, Box<Expression>)> {
+    println!("in comparison {input:?}");
+    // Parse the left side of the comparison
+    let (i, left) = expression(input)?;
+
+    // Parse the comparison operator
+    let (i, op) = comparison_operator(i)?;
+
+    // Parse the right side of the comparison
+    let (i, right) = expression(i)?;
+
+    Ok((i, (Box::from(left), op, Box::from(right))))
 }
 
 pub fn expression(input: &str) -> IResult<&str, Expression> {
-    delimited(
+    println!("In expression {input:?}");
+    let (remaining, expr) = delimited(
         multispace0,
         alt((
-            map(terminated(assignment, char(';')), |x| Expression::Assign(x)),
-            map(terminated(func_call, char(';')), |x| Expression::Call(x)),
-            map(if_stmt, |(cond, if_then, else_then)| {
-                Expression::If(cond, if_then, else_then)
+            map(literal, |x| Expression::Literal(x)),
+            map(func_call, |x| Expression::Call(x)),
+            map(comparison, |(left, op, right)| {
+                Expression::Comparison(left, op, right)
             }),
-            map(terminated(return_, tag(";")), |value| {
-                Expression::Return(value)
-            }),
+            map(identifier_to_obj, |x| Expression::Identifier(x.ident)),
         )),
         multispace0,
-    )(input)
+    )(input)?;
+
+    context("Missing semicolon", char(';'))(remaining)?;
+
+    Ok((remaining, expr))
 }

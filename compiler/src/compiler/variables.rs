@@ -9,7 +9,7 @@ use std::collections::HashMap;
 pub(crate) fn to_cranelift_type(t: &ast::EmptyType) -> types::Type {
     match t {
         ast::EmptyType::Float => types::F64,
-        ast::EmptyType::Integer => types::I64,
+        ast::EmptyType::Integer => types::I32,
     }
 }
 
@@ -18,7 +18,7 @@ pub(crate) fn to_cranelift_type(t: &ast::EmptyType) -> types::Type {
 pub(crate) fn value_type(t: &ast::Value) -> types::Type {
     match t {
         ast::Value::Float(_) => types::F64,
-        ast::Value::Integer(_) => types::I64,
+        ast::Value::Integer(_) => types::I32,
     }
 }
 
@@ -79,25 +79,16 @@ pub fn declare_variables(
 /// Recursively descend through the AST, translating all implicit
 /// variable declarations.
 fn declare_variables_in_stmt(
-    expr: &ast::Expression,
+    expr: &ast::Stmt,
     builder: &mut FunctionBuilder,
     index: &mut usize,
     variables: &mut HashMap<String, Variable>,
 ) {
     match expr {
-        ast::Expression::Assign(ref assignment) => {
+        ast::Stmt::Assign(ref assignment) => {
             alloc(
                 assignment.target.ident.clone(),
                 value_type(&assignment.value),
-                builder,
-                index,
-                variables,
-            );
-        }
-        ast::Expression::Return(ref _return) => {
-            alloc(
-                "return".to_string(),
-                value_type(&_return.value),
                 builder,
                 index,
                 variables,

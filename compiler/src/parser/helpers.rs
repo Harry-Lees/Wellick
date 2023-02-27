@@ -1,8 +1,8 @@
-use super::ast::Name;
+use super::ast::{EmptyType, Name};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, alphanumeric1, multispace0};
-use nom::combinator::recognize;
+use nom::combinator::{map, recognize};
 use nom::error::ParseError;
 use nom::multi::many0_count;
 use nom::sequence::delimited;
@@ -44,4 +44,12 @@ pub fn identifier_to_obj(input: &str) -> IResult<&str, Name> {
             ident: ident.to_string(),
         },
     ))
+}
+
+pub fn arg_type(input: &str) -> IResult<&str, EmptyType> {
+    map(alt((tag("float"), tag("int"))), |val| match val {
+        "float" => EmptyType::Float,
+        "int" => EmptyType::Integer,
+        _ => panic!(),
+    })(input)
 }

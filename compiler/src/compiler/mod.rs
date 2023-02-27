@@ -49,7 +49,7 @@ impl Default for Compiler {
 
 impl Compiler {
     /// Compile a parsed AST
-    pub fn compile(mut self, code: Vec<ast::Item>) -> Result<(), String> {
+    pub fn compile(mut self, code: Vec<ast::FnDecl>) -> Result<(), String> {
         self.translate(code);
 
         // Finish
@@ -87,11 +87,9 @@ impl Compiler {
         Ok(())
     }
 
-    fn translate(&mut self, code: Vec<ast::Item>) {
-        for item in code {
-            match item {
-                ast::Item::FnDecl(node) => self.translate_decl(node),
-            }
+    fn translate(&mut self, code: Vec<ast::FnDecl>) {
+        for func in code {
+            self.translate_decl(func);
         }
     }
 
@@ -134,8 +132,8 @@ impl Compiler {
         let mut translator =
             translate::FunctionTranslator::new(function_builder, vars, &mut self.module);
 
-        for expr in node.body {
-            translator.translate_expr(&expr);
+        for stmt in node.body {
+            translator.translate_stmt(&stmt);
         }
 
         translator.builder.seal_block(entry_block);
