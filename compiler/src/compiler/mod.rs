@@ -1,9 +1,10 @@
 mod translate;
+mod variables;
 
 use crate::parser::ast;
 
 use cranelift::codegen;
-use cranelift::prelude::{AbiParam, InstBuilder};
+use cranelift::prelude::AbiParam;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::{DataContext, Linkage, Module};
 use cranelift_native::builder as host_isa_builder;
@@ -97,7 +98,7 @@ impl Compiler {
     fn translate_decl(&mut self, node: ast::FnDecl) {
         // Define function arguments
         for arg in &node.args {
-            let t = translate::to_cranelift_type(&arg.t);
+            let t = variables::to_cranelift_type(&arg.t);
             self.codegen_context
                 .func
                 .signature
@@ -108,7 +109,7 @@ impl Compiler {
         // Define the function return type.
         match &node.ret_type {
             Some(ret_type) => {
-                let t = translate::to_cranelift_type(&ret_type);
+                let t = variables::to_cranelift_type(&ret_type);
                 self.codegen_context
                     .func
                     .signature
@@ -128,12 +129,7 @@ impl Compiler {
         function_builder.switch_to_block(entry_block);
         function_builder.append_block_params_for_function_params(entry_block);
 
-        let vars = translate::declare_variables(
-            &mut function_builder,
-            &node.args,
-            &node.body,
-            entry_block,
-        );
+        let vars = variables::declare_variables(&node, &mut function_builder, entry_block);
 
         let mut translator =
             translate::FunctionTranslator::new(function_builder, vars, &mut self.module);

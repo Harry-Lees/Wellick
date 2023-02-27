@@ -85,7 +85,7 @@ impl FnDecl {
 #[derive(Debug, Clone)]
 pub struct Call {
     pub func: String,
-    pub args: Vec<Atom>,
+    pub args: Vec<Name>,
 }
 
 #[derive(Debug, Clone)]

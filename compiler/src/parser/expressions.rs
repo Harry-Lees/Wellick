@@ -1,4 +1,4 @@
-use super::ast::{Assignment, Atom, Call, Expression, Item, Return};
+use super::ast::{Assignment, Call, Expression, Item, Return};
 use super::conditional::if_stmt;
 use super::functions::arg_type;
 use super::functions::function;
@@ -43,13 +43,7 @@ pub fn func_call(input: &str) -> IResult<&str, Call> {
             delimited(
                 ws(tag("(")),
                 terminated(
-                    separated_list0(
-                        ws(tag(",")),
-                        alt((
-                            map(identifier_to_obj, |x| Atom::Name(x)),
-                            map(literal, |x| Atom::Constant(x)),
-                        )),
-                    ),
+                    separated_list0(ws(tag(",")), identifier_to_obj),
                     // The function arguments may be terminated by an optional comma.
                     opt(tag(",")),
                 ),

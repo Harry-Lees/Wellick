@@ -1,7 +1,9 @@
-fn main(x: isize) -> isize {
-    x: isize = 10;
-    y: isize = 10;
+fn main(x: int) -> int {
+    y: int = 10;
+    other(y);
+    return 100;
 }
 
-fn other(y: isize) -> isize {
+fn other(y: int) -> int {
+    return 0;
 }
