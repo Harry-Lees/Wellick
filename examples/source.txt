@@ -1,9 +1,0 @@
-fn main(x: int) -> int {
-    y: int = 10;
-    other(y);
-    return 100;
-}
-
-fn other(y: int) -> int {
-    return 0;
-}

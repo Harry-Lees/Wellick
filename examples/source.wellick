@@ -1,0 +1,10 @@
+fn main(x: int) -> int {
+    if other() {
+        return 100;
+    }
+    return 10;
+}
+
+fn other() -> int {
+    return 10;
+}
