@@ -22,7 +22,7 @@ if result.returncode != 0:
     exit(result.returncode)
 
 subprocess.check_call(["cc", outfile])
-subprocess.check_call(["otool", "-tvVBd", outfile])
+# subprocess.check_call(["otool", "-tvVBd", outfile])
 cprint("Successfully compiled", GREEN)
 
 result = subprocess.run(["./a.out"])
