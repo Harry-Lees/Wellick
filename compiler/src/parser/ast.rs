@@ -79,13 +79,6 @@ pub struct Name {
     pub ident: String,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum ComparisonOperator {
-    Eq,
-    Gt,
-    Lt,
-}
-
 #[derive(Debug, Clone)]
 pub struct Constant {
     pub value: String,
