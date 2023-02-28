@@ -33,11 +33,13 @@ pub fn identifier(input: &str) -> IResult<&str, &str> {
 /// From the nom [docs](https://github.com/rust-bakery/nom/blob/main/doc/nom_recipes.md#rust-style-identifiers)
 /// A parser that mimics Rust style identifiers and returns a Name object.
 pub fn identifier_to_obj(input: &str) -> IResult<&str, Name> {
+    println!("In identifier_to_obj {input:?}");
     let (i, ident) = recognize(pair(
         alt((alpha1, tag("_"))),
         many0_count(alt((alphanumeric1, tag("_")))),
     ))(input)?;
 
+    println!("Successfully parsed identifier {ident:?}");
     Ok((
         i,
         Name {

@@ -17,12 +17,17 @@ pub enum EmptyType {
 #[derive(Debug, Clone)]
 pub struct Assignment {
     pub target: Name,
-    pub value: Value,
+    pub value: Expression,
+    pub var_type: EmptyType,
 }
 
 impl Assignment {
-    pub fn new(target: Name, value: Value) -> Self {
-        Self { target, value }
+    pub fn new(target: Name, var_type: EmptyType, value: Expression) -> Self {
+        Self {
+            target,
+            var_type,
+            value,
+        }
     }
 }
 
@@ -90,7 +95,6 @@ pub struct Constant {
 #[derive(Debug, Clone)]
 pub enum Expression {
     Call(Call),
-    Comparison(Box<Expression>, ComparisonOperator, Box<Expression>),
     Literal(Value),
     Identifier(String),
 }

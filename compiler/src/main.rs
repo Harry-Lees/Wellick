@@ -22,7 +22,7 @@ fn parse(input: &str) -> Result<Vec<FnDecl>, String> {
 }
 
 fn main() {
-    let contents = fs::read_to_string("./examples/source.txt").expect("unable to read file");
+    let contents = fs::read_to_string("./examples/source.wellick").expect("unable to read file");
     let ast = match parse(contents.as_str()) {
         Ok(ast) => ast,
         Err(err) => {

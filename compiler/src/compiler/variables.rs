@@ -88,7 +88,7 @@ fn declare_variables_in_stmt(
         ast::Stmt::Assign(ref assignment) => {
             alloc(
                 assignment.target.ident.clone(),
-                value_type(&assignment.value),
+                to_cranelift_type(&assignment.var_type),
                 builder,
                 index,
                 variables,

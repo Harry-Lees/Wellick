@@ -13,10 +13,11 @@ use nom::sequence::{delimited, preceded, separated_pair, terminated, tuple};
 use nom::IResult;
 
 pub fn if_stmt(input: &str) -> IResult<&str, (Expression, Vec<Stmt>, Option<Vec<Stmt>>)> {
+    println!("In if_stmt");
     map(
         tuple((
             preceded(tag("if"), ws(expression)),
-            delimited(tag("{"), many0(stmt), tag("}")),
+            delimited(ws(tag("{")), many0(stmt), ws(tag("}"))),
         )),
         |(comparison, if_then)| (comparison, if_then, Some(vec![])),
     )(input)
@@ -57,14 +58,15 @@ pub fn function(input: &str) -> IResult<&str, FnDecl> {
 /// let <var_name>: <var_type> = <value>
 /// e.g. let x: f32 = 10.0;
 pub fn assignment(input: &str) -> IResult<&str, Assignment> {
+    println!("In assignment");
     map(
         tuple((
             identifier_to_obj,
-            opt(preceded(ws(tag(":")), arg_type)),
+            preceded(ws(tag(":")), arg_type),
             ws(char('=')),
-            literal,
+            expression,
         )),
-        |(target, _, _, value)| Assignment::new(target, value),
+        |(target, var_type, _, value)| Assignment::new(target, var_type, value),
     )(input)
 }
 
@@ -78,10 +80,10 @@ pub fn stmt(input: &str) -> IResult<&str, Stmt> {
         map(if_stmt, |(comparison, body, else_body)| {
             Stmt::If(comparison, body, else_body)
         }),
-        map(terminated(return_, char(';')), |x| {
+        map(terminated(return_, ws(char(';'))), |x| {
             println!("Successfully parsed return {x:?}");
             Stmt::Return(x)
         }),
-        map(terminated(assignment, char(';')), |x| Stmt::Assign(x)),
+        map(terminated(assignment, ws(char(';'))), |x| Stmt::Assign(x)),
     ))(input)
 }

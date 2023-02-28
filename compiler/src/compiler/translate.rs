@@ -2,7 +2,6 @@ use super::ast;
 use super::variables;
 use cranelift::prelude::AbiParam;
 use cranelift::prelude::InstBuilder;
-use cranelift::prelude::IntCC;
 use cranelift_codegen::ir::{entities::Value, types};
 use cranelift_frontend::FunctionBuilder;
 use cranelift_module::{Linkage, Module};
@@ -42,26 +41,6 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
     pub fn translate_expr(&mut self, expr: &ast::Expression) -> Value {
         match expr {
             ast::Expression::Call(val) => self.translate_call(val),
-            ast::Expression::Comparison(lhs, op, rhs) => {
-                let left = self.translate_expr(&*lhs);
-                let right = self.translate_expr(&*rhs);
-                if left != right {
-                    panic!("Cannot compare {left} and {right}");
-                };
-                match op {
-                    ast::ComparisonOperator::Eq => {
-                        self.builder.ins().icmp(IntCC::Equal, left, right)
-                    }
-                    ast::ComparisonOperator::Gt => {
-                        self.builder
-                            .ins()
-                            .icmp(IntCC::SignedGreaterThan, left, right)
-                    }
-                    ast::ComparisonOperator::Lt => {
-                        self.builder.ins().icmp(IntCC::SignedLessThan, left, right)
-                    }
-                }
-            }
             ast::Expression::Literal(val) => match val {
                 ast::Value::Float(value) => self.builder.ins().f32const(*value),
                 ast::Value::Integer(value) => self.builder.ins().iconst(types::I32, *value as i64),
@@ -114,22 +93,20 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
     }
 
     fn translate_return(&mut self, expr: &ast::Expression) -> Value {
-        println!("In translate_return {expr:?}");
+        // println!("In translate_return {expr:?}");
         let value = self.translate_expr(expr);
         self.builder.ins().return_(&[value]);
         value
     }
 
     fn translate_assign(&mut self, expr: &ast::Assignment) -> Value {
+        // println!("Translate assign {expr:?}");
         let name = &expr.target.ident;
+        let value = self.translate_expr(&expr.value);
         let var = self
             .variables
             .get(name)
             .expect(format!("No variable named {}", name).as_str());
-        let value = match &expr.value {
-            ast::Value::Float(val) => self.builder.ins().f64const(*val as f64),
-            ast::Value::Integer(val) => self.builder.ins().iconst(types::I32, *val as i64),
-        };
         self.builder.def_var(var.reference, value);
         value
     }
