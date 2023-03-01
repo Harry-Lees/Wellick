@@ -1,3 +1,4 @@
+mod builtins;
 mod translate;
 mod variables;
 
@@ -5,6 +6,7 @@ use crate::parser::ast;
 
 use cranelift::codegen;
 use cranelift::prelude::AbiParam;
+use cranelift::prelude::Configurable;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::{DataContext, Linkage, Module};
 use cranelift_native::builder as host_isa_builder;
@@ -24,7 +26,10 @@ impl Default for Compiler {
     /// default constructor for Compiler. Will construct a compiler for the current
     /// machine with default compiler flags.
     fn default() -> Self {
-        let flag_builder = codegen::settings::builder();
+        let mut flag_builder = codegen::settings::builder();
+        flag_builder
+            .set("opt_level", "speed")
+            .expect("Unable to set opt_level");
         let isa_builder = host_isa_builder().expect("host machine is not supported");
         let isa = isa_builder
             .finish(codegen::settings::Flags::new(flag_builder))
@@ -36,6 +41,7 @@ impl Default for Compiler {
             cranelift_module::default_libcall_names(),
         )
         .unwrap();
+
         let module = ObjectModule::new(builder);
 
         Self {
@@ -136,7 +142,7 @@ impl Compiler {
             translator.translate_stmt(&stmt);
         }
 
-        translator.builder.seal_block(entry_block);
+        translator.builder.seal_all_blocks();
         translator.builder.finalize();
         // Declare a function, has to be done before the function can be
         // Called or defined.
@@ -154,6 +160,10 @@ impl Compiler {
             .define_function(function_id, &mut self.codegen_context)
             .expect("Failed to define module function");
 
+        match codegen::verify_function(&self.codegen_context.func, self.module.isa()) {
+            Ok(result) => println!("Successfully verified function: {:?}", result),
+            Err(result) => println!("An error occurred when verifying function {:?}", result),
+        }
         println!("{}", self.codegen_context.func.display());
         // Clear the function context ready for the next function
         self.module.clear_context(&mut self.codegen_context);
