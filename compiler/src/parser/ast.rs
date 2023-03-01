@@ -71,7 +71,7 @@ impl FnDecl {
 #[derive(Debug, Clone)]
 pub struct Call {
     pub func: String,
-    pub args: Vec<Name>,
+    pub args: Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]
