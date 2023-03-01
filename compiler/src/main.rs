@@ -21,13 +21,16 @@ fn parse(input: &str) -> Result<Vec<FnDecl>, String> {
     }
 }
 
-fn main() {
+fn main() -> Result<(), String> {
     let contents = fs::read_to_string("./examples/source.wellick").expect("unable to read file");
     let ast = match parse(contents.as_str()) {
-        Ok(ast) => ast,
+        Ok(ast) => {
+            println!("Successfully constructed AST");
+            ast
+        }
         Err(err) => {
-            println!("{}", err);
-            return ();
+            println!("SyntaxError: {}", err);
+            return Err("Failed to compile".to_owned());
         }
     };
 
@@ -35,8 +38,7 @@ fn main() {
 
     let aot_compiler = compiler::Compiler::default();
 
-    match aot_compiler.compile(ast) {
-        Ok(_) => println!("successfully compiled ast..."),
-        Err(_) => println!("Failed to compile AST"),
-    }
+    aot_compiler.compile(ast)?;
+
+    Ok(())
 }
