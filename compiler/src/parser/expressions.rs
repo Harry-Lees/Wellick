@@ -1,4 +1,4 @@
-use super::ast::{Call, ComparisonOperator, Expression};
+use super::ast::{Call, Expression};
 use super::helpers::{identifier, identifier_to_obj, ws};
 use super::literals::literal;
 
@@ -28,7 +28,7 @@ pub fn func_call(input: &str) -> IResult<&str, Call> {
             delimited(
                 ws(tag("(")),
                 terminated(
-                    separated_list0(ws(tag(",")), identifier_to_obj),
+                    separated_list0(ws(tag(",")), expression),
                     // The function arguments may be terminated by an optional comma.
                     opt(tag(",")),
                 ),
