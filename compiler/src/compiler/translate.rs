@@ -3,7 +3,7 @@ use super::variables;
 
 use cranelift::prelude::AbiParam;
 use cranelift::prelude::InstBuilder;
-use cranelift_codegen::ir::{entities::Value, types, InstBuilderBase};
+use cranelift_codegen::ir::{entities::Value, types};
 use cranelift_frontend::FunctionBuilder;
 use cranelift_module::{Linkage, Module};
 use cranelift_object::ObjectModule;
@@ -29,11 +29,38 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
         }
     }
 
+    pub fn translate_if(
+        &mut self,
+        condition: &ast::Expression,
+        if_body: &Vec<ast::Stmt>,
+        else_body: &Option<Vec<ast::Stmt>>,
+    ) -> Value {
+        let condition_value = self.translate_expr(condition);
+
+        let then_block = self.builder.create_block();
+        let merge_block = self.builder.create_block();
+        self.builder.ins().brz(condition_value, then_block, &[]);
+        self.builder.ins().jump(merge_block, &[]);
+        self.builder.switch_to_block(then_block);
+        self.builder.seal_block(then_block);
+
+        let mut then_return: Option<Value> = None;
+        for expr in if_body {
+            then_return = Some(self.translate_stmt(expr));
+        }
+        if then_return.is_none() {
+            panic!("If statement has no body");
+        }
+
+        self.builder.switch_to_block(merge_block);
+        then_return.unwrap()
+    }
+
     pub fn translate_stmt(&mut self, stmt: &ast::Stmt) -> Value {
         match stmt {
             ast::Stmt::Assign(expr) => self.translate_assign(expr),
             ast::Stmt::If(condition, body, else_body) => {
-                todo!("If stmt not implemented");
+                self.translate_if(condition, body, else_body)
             }
             ast::Stmt::Return(expr) => self.translate_return(expr),
         }

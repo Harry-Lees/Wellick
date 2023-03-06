@@ -7,6 +7,7 @@ use crate::parser::ast;
 use cranelift::codegen;
 use cranelift::prelude::AbiParam;
 use cranelift::prelude::Configurable;
+use cranelift_codegen::ir::types;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::{DataContext, Linkage, Module};
 use cranelift_native::builder as host_isa_builder;
@@ -56,6 +57,7 @@ impl Default for Compiler {
 impl Compiler {
     /// Compile a parsed AST
     pub fn compile(mut self, code: Vec<ast::FnDecl>) -> Result<(), String> {
+        self.decl_stdlib();
         self.translate(code);
 
         // Finish
@@ -91,6 +93,25 @@ impl Compiler {
         file.write_all(&code)?;
 
         Ok(())
+    }
+
+    fn decl_stdlib(&mut self) {
+        let mut sig_a = self.module.make_signature();
+        sig_a.params.push(AbiParam::new(types::I32));
+        sig_a.params.push(AbiParam::new(types::I32));
+        sig_a.returns.push(AbiParam::new(types::I32));
+        let iadd_func_id = self
+            .module
+            .declare_function("iadd", Linkage::Local, &sig_a)
+            .unwrap();
+
+        let mut sig_b = self.module.make_signature();
+        sig_b.params.push(AbiParam::new(types::I32));
+        sig_b.params.push(AbiParam::new(types::I32));
+        sig_b.returns.push(AbiParam::new(types::I32));
+        self.module
+            .declare_function("iequals", Linkage::Local, &sig_b)
+            .unwrap();
     }
 
     fn translate(&mut self, code: Vec<ast::FnDecl>) {
@@ -144,6 +165,7 @@ impl Compiler {
 
         translator.builder.seal_all_blocks();
         translator.builder.finalize();
+        println!("{}", self.codegen_context.func.display());
         // Declare a function, has to be done before the function can be
         // Called or defined.
         let function_id = self

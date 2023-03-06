@@ -94,6 +94,17 @@ fn declare_variables_in_stmt(
                 variables,
             );
         }
+        ast::Stmt::If(ref _condition, ref if_body, ref else_body) => {
+            for stmt in if_body {
+                declare_variables_in_stmt(stmt, builder, index, variables);
+            }
+
+            // if else_body.is_some() {
+            //     for stmt in else_body.unwrap().as_ref() {
+            //         declare_variables_in_stmt(stmt, builder, index, variables);
+            //     }
+            // }
+        }
         _ => {}
     }
 }
