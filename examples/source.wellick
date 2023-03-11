@@ -1,8 +1,8 @@
+fn other(x: int) -> int {
+    return 100;
+}
+
 fn main(x: int) -> int {
     y: int = other(10);
     return y;
-}
-
-fn other(x: int) -> int {
-    return 100;
 }
