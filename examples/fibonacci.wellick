@@ -1,0 +1,12 @@
+fn fibonacci(n: int) -> int {
+    if ieq(n, 1) {
+        return 1;
+    }
+    x: int = fibonacci(isub(n, 1));
+    y: int = fibonacci(isub(n, 2));
+    return iadd(x, y);
+}
+
+fn main() -> int {
+    return fibonacci(10);
+}
