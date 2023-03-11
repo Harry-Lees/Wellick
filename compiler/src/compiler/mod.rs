@@ -1,4 +1,3 @@
-mod builtins;
 mod translate;
 mod variables;
 
@@ -31,6 +30,8 @@ impl Default for Compiler {
         flag_builder
             .set("opt_level", "speed")
             .expect("Unable to set opt_level");
+        flag_builder.set("use_colocated_libcalls", "false").unwrap();
+        flag_builder.set("is_pic", "false").unwrap();
         let isa_builder = host_isa_builder().expect("host machine is not supported");
         let isa = isa_builder
             .finish(codegen::settings::Flags::new(flag_builder))
@@ -57,7 +58,7 @@ impl Default for Compiler {
 impl Compiler {
     /// Compile a parsed AST
     pub fn compile(mut self, code: Vec<ast::FnDecl>) -> Result<(), String> {
-        self.decl_stdlib();
+        //self.decl_stdlib();
         self.translate(code);
 
         // Finish
@@ -186,7 +187,6 @@ impl Compiler {
             Ok(result) => println!("Successfully verified function: {:?}", result),
             Err(result) => println!("An error occurred when verifying function {:?}", result),
         }
-        println!("{}", self.codegen_context.func.display());
         // Clear the function context ready for the next function
         self.module.clear_context(&mut self.codegen_context);
     }
