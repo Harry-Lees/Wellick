@@ -32,7 +32,7 @@ if __name__ == "__main__":
         print(result)
 
     if platform.system() == "Windows":
-        subprocess.check_call(["LINK", outfile, "/ENTRY:main"])
+        subprocess.check_call(["LINK", outfile, "builtins", "/ENTRY:main"])
         result = subprocess.run(["a.exe"])
         cprint("Successfully compiled for Windows", GREEN)
         print(result)
