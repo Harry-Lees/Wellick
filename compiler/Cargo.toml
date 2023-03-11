@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 cranelift = "0.92.0"
-cranelift-codegen = { version = "0.92.0", features = ["arm64"] }
+cranelift-codegen = { version = "0.92.0", features = ["arm64", "x86"] }
 cranelift-frontend = "0.92.0"
 cranelift-module = "0.92.0"
 cranelift-native = "0.92.0"
