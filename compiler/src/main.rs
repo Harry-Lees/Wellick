@@ -1,10 +1,16 @@
 mod compiler;
 mod parser;
 
+use clap::Parser;
 use nom::{multi::many0, IResult};
 use parser::ast::*;
 use parser::stmts::function;
 use std::fs;
+
+#[derive(Parser)]
+struct Cli {
+    path: std::path::PathBuf,
+}
 
 fn parse(input: &str) -> Result<Vec<FnDecl>, String> {
     let parser = many0(function)(input);
@@ -22,7 +28,8 @@ fn parse(input: &str) -> Result<Vec<FnDecl>, String> {
 }
 
 fn main() -> Result<(), String> {
-    let contents = fs::read_to_string("./examples/source.wellick").expect("unable to read file");
+    let args = Cli::parse();
+    let contents = fs::read_to_string(args.path).expect("unable to read file");
     let ast = match parse(contents.as_str()) {
         Ok(ast) => {
             println!("Successfully constructed AST");
