@@ -13,15 +13,6 @@ pub(crate) fn to_cranelift_type(t: &ast::EmptyType) -> types::Type {
     }
 }
 
-/// Helper function to convert the Value AST node to
-/// a valid Cranelift IR type.
-pub(crate) fn value_type(t: &ast::Value) -> types::Type {
-    match t {
-        ast::Value::Float(_) => types::F64,
-        ast::Value::Integer(_) => types::I32,
-    }
-}
-
 /// A Variable declaration, holds the name, type, cranelift ref,
 /// and the mutability of the variable.
 #[derive(Debug, Clone)]
