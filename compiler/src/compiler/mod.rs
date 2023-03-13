@@ -101,8 +101,7 @@ impl Compiler {
         sig_a.params.push(AbiParam::new(types::I32));
         sig_a.params.push(AbiParam::new(types::I32));
         sig_a.returns.push(AbiParam::new(types::I32));
-        let iadd_func_id = self
-            .module
+        self.module
             .declare_function("iadd", Linkage::Local, &sig_a)
             .unwrap();
 
@@ -111,7 +110,15 @@ impl Compiler {
         sig_b.params.push(AbiParam::new(types::I32));
         sig_b.returns.push(AbiParam::new(types::I32));
         self.module
-            .declare_function("iequals", Linkage::Local, &sig_b)
+            .declare_function("ieq", Linkage::Local, &sig_b)
+            .unwrap();
+
+        let mut sig_c = self.module.make_signature();
+        sig_c.params.push(AbiParam::new(types::I32));
+        sig_c.params.push(AbiParam::new(types::I32));
+        sig_c.returns.push(AbiParam::new(types::I32));
+        self.module
+            .declare_function("isub", Linkage::Import, &sig_c)
             .unwrap();
     }
 
