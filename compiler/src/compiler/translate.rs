@@ -84,7 +84,6 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
     }
 
     fn translate_call(&mut self, expr: &ast::Call) -> Value {
-        println!("{:?}", self.module.get_name(expr.func.as_str()));
         let mut sig = self.module.make_signature();
         let mut arg_values = Vec::new();
         for arg in &expr.args {
