@@ -1,0 +1,3 @@
+fn main() -> int {
+    return iadd(10, 10);
+}
