@@ -29,7 +29,13 @@ fn parse(input: &str) -> Result<Vec<FnDecl>, String> {
 
 fn main() -> Result<(), String> {
     let args = Cli::parse();
-    let contents = fs::read_to_string(args.path).expect("unable to read file");
+    let contents = fs::read_to_string(args.path.clone()).expect(
+        format!(
+            "unable to read file {}",
+            args.path.clone().to_string_lossy()
+        )
+        .as_str(),
+    );
     let ast = match parse(contents.as_str()) {
         Ok(ast) => {
             println!("Successfully constructed AST");
