@@ -1,3 +1,4 @@
+import argparse
 import os
 import pathlib
 import platform
@@ -14,13 +15,17 @@ def cprint(text, color):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("file", help="The file to compile")
+    args = parser.parse_args()
+
     outfile = pathlib.Path("a.out")
     env = {**os.environ, "RUST_BACKTRACE": "1"}
 
     if outfile.is_file():
         outfile.unlink()
 
-    result = subprocess.run(["cargo", "run", "--release"], env=env)
+    result = subprocess.run(["cargo", "run", "--release", args.file], env=env)
     if result.returncode != 0:
         cprint("Failed to compile", RED)
         exit(result.returncode)
