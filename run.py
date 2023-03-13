@@ -14,6 +14,8 @@ def cprint(text, color):
     print(f"{color}{text}{WHITE}")
 
 
+compile_stdlib = True
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("file", help="The file to compile")
@@ -37,7 +39,10 @@ if __name__ == "__main__":
         print(result)
 
     if platform.system() == "Windows":
-        subprocess.check_call(["LINK", outfile, "builtins", "/ENTRY:main"])
+        if compile_stdlib:
+            cprint("Compiling stdlib", GREEN)
+            subprocess.check_call(["cl", "builtins.c", "/LD", "/MD", "/Wall"])
+        subprocess.check_call(["LINK", outfile, "builtins", "/SUBSYSTEM:CONSOLE"])
         result = subprocess.run(["a.exe"])
         cprint("Successfully compiled for Windows", GREEN)
         print(result)
