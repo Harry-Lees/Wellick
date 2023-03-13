@@ -1,8 +1,7 @@
 use super::ast::{Assignment, Expression, Stmt};
 use super::ast::{FnArg, FnDecl};
-use super::expressions::expression;
+use super::expressions::{expression, func_call};
 use super::helpers::{arg_type, identifier, identifier_to_obj, ws};
-use super::literals::literal;
 
 use nom::branch::alt;
 use nom::bytes::complete::tag;
@@ -84,6 +83,7 @@ pub fn stmt(input: &str) -> IResult<&str, Stmt> {
             println!("Successfully parsed return {x:?}");
             Stmt::Return(x)
         }),
+        map(terminated(func_call, ws(char(';'))), |x| Stmt::Call(x)),
         map(terminated(assignment, ws(char(';'))), |x| Stmt::Assign(x)),
     ))(input)
 }

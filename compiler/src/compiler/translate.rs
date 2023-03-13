@@ -63,6 +63,7 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                 self.translate_if(condition, body, else_body)
             }
             ast::Stmt::Return(expr) => self.translate_return(expr),
+            ast::Stmt::Call(expr) => self.translate_call(expr),
         }
     }
 

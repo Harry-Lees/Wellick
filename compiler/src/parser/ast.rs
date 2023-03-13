@@ -97,4 +97,5 @@ pub enum Stmt {
     Return(Expression),
     If(Expression, Vec<Stmt>, Option<Vec<Stmt>>),
     Assign(Assignment),
+    Call(Call),
 }
