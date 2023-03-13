@@ -1,4 +1,14 @@
 #include <stdint.h>
+#include <stdio.h>
+
+
+int print(uint32_t inp) {
+    return printf("%d", inp);
+}
+
+int println(uint32_t inp) {
+    return printf("%d\n", inp);
+}
 
 uint32_t iadd(uint32_t a, uint16_t b) {
     return a + b;
