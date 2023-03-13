@@ -1,0 +1,5 @@
+fn main() -> int {
+    let y = 10;
+    y = 15;
+    return 0;
+}
