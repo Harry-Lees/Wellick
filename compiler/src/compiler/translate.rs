@@ -8,6 +8,7 @@ use cranelift_frontend::FunctionBuilder;
 use cranelift_module::{Linkage, Module};
 use cranelift_object::ObjectModule;
 use std::collections::HashMap;
+use std::process;
 
 /// Module to translate AST into Cranelift IR constructs.
 pub struct FunctionTranslator<'a, 'b: 'a> {
@@ -64,6 +65,7 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
             }
             ast::Stmt::Return(expr) => self.translate_return(expr),
             ast::Stmt::Call(expr) => self.translate_call(expr),
+            ast::Stmt::ReAssign(expr) => self.translate_reassign(expr),
         }
     }
 
@@ -107,6 +109,26 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
     fn translate_return(&mut self, expr: &ast::Expression) -> Value {
         let value = self.translate_expr(expr);
         self.builder.ins().return_(&[value]);
+        value
+    }
+
+    fn translate_reassign(&mut self, expr: &ast::ReAssign) -> Value {
+        let name = &expr.target.ident;
+        let value = self.translate_expr(&expr.value);
+
+        let var = self.variables.get(name);
+        if var.is_none() {
+            println!("Cannot find value `{name}` in this scope");
+            process::exit(1);
+        }
+
+        if !var.unwrap().mutable {
+            println!("Cannot mutate immutable variable {name}");
+            process::exit(1);
+        }
+
+        self.builder.def_var(var.unwrap().reference, value);
+
         value
     }
 

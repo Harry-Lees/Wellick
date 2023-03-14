@@ -54,6 +54,7 @@ pub fn declare_variables(
         let var = alloc(
             arg.name.clone(),
             to_cranelift_type(&arg.t),
+            false,
             builder,
             &mut index,
             &mut variables,
@@ -77,24 +78,25 @@ fn declare_variables_in_stmt(
 ) {
     match expr {
         ast::Stmt::Assign(ref assignment) => {
-            alloc(
-                assignment.target.ident.clone(),
-                to_cranelift_type(&assignment.var_type),
-                builder,
-                index,
-                variables,
-            );
+            if assignment.var_type.is_some() {
+                alloc(
+                    assignment.target.ident.clone(),
+                    to_cranelift_type(&assignment.var_type.clone().unwrap()),
+                    assignment.mutable,
+                    builder,
+                    index,
+                    variables,
+                );
+            }
         }
         ast::Stmt::If(ref _condition, ref if_body, ref else_body) => {
             for stmt in if_body {
                 declare_variables_in_stmt(stmt, builder, index, variables);
             }
 
-            // if else_body.is_some() {
-            //     for stmt in else_body.unwrap().as_ref() {
-            //         declare_variables_in_stmt(stmt, builder, index, variables);
-            //     }
-            // }
+            if else_body.is_some() {
+                todo!("else block not currently implemented");
+            }
         }
         _ => {}
     }
@@ -103,6 +105,7 @@ fn declare_variables_in_stmt(
 fn alloc(
     name: String,
     var_type: types::Type,
+    mutable: bool,
     builder: &mut FunctionBuilder,
     index: &mut usize,
     variables: &mut HashMap<String, Variable>,
@@ -114,7 +117,7 @@ fn alloc(
         name.clone(),
         var_type,
         cranelift_Variable::from_u32(*index as u32),
-        false,
+        mutable,
     );
     builder.declare_var(var.reference, var.var_type);
     variables.insert(name, var.clone());
