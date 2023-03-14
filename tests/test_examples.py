@@ -2,6 +2,8 @@ import platform
 import subprocess
 from pathlib import Path
 
+import pytest
+
 
 def run_example(file: str) -> tuple[bytes, bytes, int]:
     """
@@ -18,7 +20,7 @@ def run_example(file: str) -> tuple[bytes, bytes, int]:
         raise RuntimeError("Failed to compile")
 
     if platform.system() == "Windows":
-        subprocess.check_call(["LINK", "a.out", "builtins", "/ENTRY:main"])
+        subprocess.check_call(["LINK", "a.out", "builtins", "/MD", "/Wall"])
         result = subprocess.run(["a.exe"])
         return result.stdout, result.stderr, result.returncode
 
@@ -32,3 +34,10 @@ def test_builtins() -> None:
     file = "builtins.wellick"
     stdout, stderr, retcode = run_example(file)
     assert retcode == 20
+
+
+def test_default_const() -> None:
+    """Test that the default_const example compiles."""
+    file = "default_const.wellick"
+    with pytest.raises(RuntimeError):
+        stdout, stderr, retcode = run_example(file)

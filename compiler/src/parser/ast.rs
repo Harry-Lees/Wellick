@@ -18,16 +18,35 @@ pub enum EmptyType {
 pub struct Assignment {
     pub target: Name,
     pub value: Expression,
-    pub var_type: EmptyType,
+    pub var_type: Option<EmptyType>,
+    pub mutable: bool,
 }
 
 impl Assignment {
-    pub fn new(target: Name, var_type: EmptyType, value: Expression) -> Self {
+    pub fn new(
+        target: Name,
+        var_type: Option<EmptyType>,
+        value: Expression,
+        mutable: bool,
+    ) -> Self {
         Self {
             target,
             var_type,
             value,
+            mutable,
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ReAssign {
+    pub target: Name,
+    pub value: Expression,
+}
+
+impl ReAssign {
+    pub fn new(target: Name, value: Expression) -> Self {
+        Self { target, value }
     }
 }
 
@@ -97,5 +116,6 @@ pub enum Stmt {
     Return(Expression),
     If(Expression, Vec<Stmt>, Option<Vec<Stmt>>),
     Assign(Assignment),
+    ReAssign(ReAssign),
     Call(Call),
 }
