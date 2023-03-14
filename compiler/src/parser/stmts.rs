@@ -1,4 +1,4 @@
-use super::ast::{Assignment, Expression, Stmt};
+use super::ast::{Assignment, Expression, ReAssign, Stmt};
 use super::ast::{FnArg, FnDecl};
 use super::expressions::{expression, func_call};
 use super::helpers::{arg_type, identifier, identifier_to_obj, ws};
@@ -53,19 +53,39 @@ pub fn function(input: &str) -> IResult<&str, FnDecl> {
     )(input)
 }
 
+pub fn mutable_qualifier(input: &str) -> IResult<&str, bool> {
+    let (i, result) = opt(tag("mut"))(input)?;
+    if result.is_some() {
+        return Ok((i, true));
+    }
+    return Ok((i, false));
+}
+
 /// Parse assignment in the form
 /// let <var_name>: <var_type> = <value>
 /// e.g. let x: f32 = 10.0;
 pub fn assignment(input: &str) -> IResult<&str, Assignment> {
-    println!("In assignment");
     map(
-        tuple((
-            identifier_to_obj,
-            preceded(ws(tag(":")), arg_type),
-            ws(char('=')),
-            expression,
-        )),
-        |(target, var_type, _, value)| Assignment::new(target, var_type, value),
+        preceded(
+            ws(tag("let")),
+            tuple((
+                ws(mutable_qualifier),
+                identifier_to_obj,
+                opt(preceded(ws(tag(":")), arg_type)),
+                ws(char('=')),
+                expression,
+            )),
+        ),
+        |(mutable, target, var_type, _, value)| Assignment::new(target, var_type, value, mutable),
+    )(input)
+}
+
+/// Parse a re-assignment.
+/// This is when an already defined variable is changed.
+pub fn reassign(input: &str) -> IResult<&str, ReAssign> {
+    map(
+        tuple((identifier_to_obj, ws(char('=')), expression)),
+        |(target, _, value)| ReAssign::new(target, value),
     )(input)
 }
 
@@ -84,6 +104,7 @@ pub fn stmt(input: &str) -> IResult<&str, Stmt> {
             Stmt::Return(x)
         }),
         map(terminated(func_call, ws(char(';'))), |x| Stmt::Call(x)),
+        map(terminated(reassign, ws(char(';'))), |x| Stmt::ReAssign(x)),
         map(terminated(assignment, ws(char(';'))), |x| Stmt::Assign(x)),
     ))(input)
 }
