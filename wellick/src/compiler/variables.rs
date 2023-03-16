@@ -131,7 +131,7 @@ fn alloc(
 
     let stack_slot = builder.create_sized_stack_slot(StackSlotData::new(
         cranelift::prelude::StackSlotKind::ExplicitSlot,
-        32,
+        var_type.bytes(),
     ));
 
     let var = Variable::new(
