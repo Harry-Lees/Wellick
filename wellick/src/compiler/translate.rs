@@ -1,5 +1,6 @@
 use super::ast;
 use super::variables;
+use super::variables::VarLoc;
 
 use cranelift::prelude::AbiParam;
 use cranelift::prelude::InstBuilder;
@@ -81,7 +82,28 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                     .variables
                     .get(value)
                     .expect("No variable with that name could be found");
-                self.builder.use_var(var.reference)
+
+                match var.loc {
+                    VarLoc::Register => self.builder.use_var(var.reference),
+                    VarLoc::StackSlot(stack_slot) => {
+                        self.builder.ins().stack_load(var.var_type, stack_slot, 0)
+                    }
+                }
+            }
+            ast::Expression::Reference(value) => {
+                let var = self
+                    .variables
+                    .get(value)
+                    .expect("No variable with that name could be found");
+
+                match var.loc {
+                    VarLoc::Register => {
+                        panic!("Cannot get pointer of register variable {}", var.name);
+                    }
+                    VarLoc::StackSlot(stack_slot) => {
+                        self.builder.ins().stack_addr(var.var_type, stack_slot, 0)
+                    }
+                }
             }
         }
     }
@@ -139,7 +161,16 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
             .variables
             .get(name)
             .expect(format!("No variable named {}", name).as_str());
-        self.builder.def_var(var.reference, value);
+
+        match var.loc {
+            VarLoc::Register => {
+                self.builder.def_var(var.reference, value);
+            }
+            VarLoc::StackSlot(stack_slot) => {
+                self.builder.ins().stack_store(value, stack_slot, 0);
+            }
+        }
+
         value
     }
 }
