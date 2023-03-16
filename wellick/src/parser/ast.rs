@@ -12,6 +12,7 @@ pub enum Value {
 pub enum EmptyType {
     Float,
     Integer,
+    Pointer,
 }
 
 #[derive(Debug, Clone)]
@@ -109,6 +110,7 @@ pub enum Expression {
     Call(Call),
     Literal(Value),
     Identifier(String),
+    Reference(String),
 }
 
 #[derive(Debug, Clone)]
