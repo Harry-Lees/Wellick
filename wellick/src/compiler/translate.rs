@@ -3,6 +3,7 @@ use super::variables;
 
 use cranelift::prelude::AbiParam;
 use cranelift::prelude::InstBuilder;
+use cranelift::prelude::MemFlags;
 use cranelift_codegen::ir::{entities::Value, types};
 use cranelift_frontend::FunctionBuilder;
 use cranelift_module::{Linkage, Module};
@@ -74,14 +75,43 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
             ast::Expression::Call(val) => self.translate_call(val),
             ast::Expression::Literal(val) => match val {
                 ast::Value::Float(value) => self.builder.ins().f32const(*value),
-                ast::Value::Integer(value) => self.builder.ins().iconst(types::I32, *value as i64),
+                ast::Value::Integer(value) => self.builder.ins().iconst(types::I64, *value as i64),
             },
             ast::Expression::Identifier(value) => {
                 let var = self
                     .variables
                     .get(value)
                     .expect("No variable with that name could be found");
-                self.builder.use_var(var.reference)
+
+                self.builder.ins().stack_load(var.var_type, var.loc, 0)
+            }
+            // Address-Of a value, returns a pointer pointing to the stack slot
+            // of the variable.
+            ast::Expression::AddressOf(value) => {
+                let var = self
+                    .variables
+                    .get(value)
+                    .expect("No variable with that name could be found");
+
+                let stack_addr = self.builder.ins().stack_addr(var.var_type, var.loc, 0);
+                stack_addr
+            }
+            // Dereference a pointer and return the value at that address.
+            ast::Expression::DeRef(value) => {
+                let var = self
+                    .variables
+                    .get(value)
+                    .expect("No variable with that name could be found");
+
+                // Load the pointer from the stack slot.
+                let stack_ptr = self.builder.ins().stack_load(types::I64, var.loc, 0);
+
+                // Load the value pointed to by "stack_ptr"
+                let val = self
+                    .builder
+                    .ins()
+                    .load(var.var_type, MemFlags::new(), stack_ptr, 0);
+                val
             }
         }
     }
@@ -112,7 +142,7 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
         value
     }
 
-    fn translate_reassign(&mut self, expr: &ast::ReAssign) -> Value {
+    fn translate_reassign(&mut self, expr: &ast::Local) -> Value {
         let name = &expr.target.ident;
         let value = self.translate_expr(&expr.value);
 
@@ -139,7 +169,8 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
             .variables
             .get(name)
             .expect(format!("No variable named {}", name).as_str());
-        self.builder.def_var(var.reference, value);
+
+        self.builder.ins().stack_store(value, var.loc, 0);
         value
     }
 }

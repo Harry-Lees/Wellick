@@ -1,4 +1,4 @@
-use super::ast::{Assignment, Expression, ReAssign, Stmt};
+use super::ast::{Assignment, Expression, Local, Stmt};
 use super::ast::{FnArg, FnDecl};
 use super::expressions::{expression, func_call};
 use super::helpers::{arg_type, identifier, identifier_to_obj, ws};
@@ -82,10 +82,10 @@ pub fn assignment(input: &str) -> IResult<&str, Assignment> {
 
 /// Parse a re-assignment.
 /// This is when an already defined variable is changed.
-pub fn reassign(input: &str) -> IResult<&str, ReAssign> {
+pub fn reassign(input: &str) -> IResult<&str, Local> {
     map(
         tuple((identifier_to_obj, ws(char('=')), expression)),
-        |(target, _, value)| ReAssign::new(target, value),
+        |(target, _, value)| Local::new(target, value),
     )(input)
 }
 

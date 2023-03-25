@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <inttypes.h>
 
 // A collection of C functions that are linked to Wellick
 // and can be called from Wellick code. These functions act
@@ -9,13 +10,13 @@
 // So all integer functions use uint32_t in their parameters and return types
 
 // Print a string to stdout
-int print(uint32_t inp) {
-    return printf("%d", inp);
+int print(uint64_t inp) {
+    return printf("%" PRId64, inp);
 }
 
 // Print a string to stdout with a newline
-int println(uint32_t inp) {
-    return printf("%d\n", inp);
+int println(uint64_t inp) {
+    return printf("%" PRId64 "\n", inp);
 }
 
 // Add two integers, return the result

@@ -1,4 +1,6 @@
 use super::ast;
+use cranelift::prelude::StackSlotData;
+use cranelift_codegen::ir::StackSlot;
 use cranelift_codegen::ir::{types, Block};
 use cranelift_frontend::FunctionBuilder;
 use cranelift_frontend::Variable as cranelift_Variable;
@@ -9,7 +11,8 @@ use std::collections::HashMap;
 pub(crate) fn to_cranelift_type(t: &ast::EmptyType) -> types::Type {
     match t {
         ast::EmptyType::Float => types::F64,
-        ast::EmptyType::Integer => types::I32,
+        ast::EmptyType::Integer => types::I64,
+        ast::EmptyType::Pointer => types::I64,
     }
 }
 
@@ -20,6 +23,7 @@ pub struct Variable {
     pub name: String,
     pub var_type: types::Type,
     pub reference: cranelift_Variable,
+    pub loc: StackSlot,
     pub mutable: bool,
 }
 
@@ -28,6 +32,7 @@ impl Variable {
         name: String,
         var_type: types::Type,
         reference: cranelift_Variable,
+        loc: StackSlot,
         mutable: bool,
     ) -> Self {
         Self {
@@ -35,6 +40,7 @@ impl Variable {
             var_type,
             mutable,
             reference,
+            loc,
         }
     }
 }
@@ -102,6 +108,9 @@ fn declare_variables_in_stmt(
     }
 }
 
+/// Allocate a stack slot for a variable.
+/// Allocating in this way allows grabbing a pointer
+/// to a local variable.
 fn alloc(
     name: String,
     var_type: types::Type,
@@ -113,13 +122,19 @@ fn alloc(
     if variables.contains_key(&name) {
         panic!("Cannot re-declare variable {}", name);
     }
+
+    let stack_slot = builder.create_sized_stack_slot(StackSlotData::new(
+        cranelift::prelude::StackSlotKind::ExplicitSlot,
+        var_type.bytes(),
+    ));
+
     let var = Variable::new(
         name.clone(),
         var_type,
         cranelift_Variable::from_u32(*index as u32),
+        stack_slot,
         mutable,
     );
-    builder.declare_var(var.reference, var.var_type);
     variables.insert(name, var.clone());
     *index += 1;
     var

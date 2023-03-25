@@ -49,9 +49,13 @@ pub fn identifier_to_obj(input: &str) -> IResult<&str, Name> {
 }
 
 pub fn arg_type(input: &str) -> IResult<&str, EmptyType> {
-    map(alt((tag("float"), tag("int"))), |val| match val {
-        "float" => EmptyType::Float,
-        "int" => EmptyType::Integer,
-        _ => panic!(),
-    })(input)
+    map(
+        alt((tag("float"), tag("int"), tag("isize"))),
+        |val| match val {
+            "float" => EmptyType::Float,
+            "int" => EmptyType::Integer,
+            "isize" => EmptyType::Pointer,
+            val => panic!("Unsupported type {val:?}"),
+        },
+    )(input)
 }

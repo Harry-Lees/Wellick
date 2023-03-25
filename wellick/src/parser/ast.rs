@@ -12,6 +12,7 @@ pub enum Value {
 pub enum EmptyType {
     Float,
     Integer,
+    Pointer,
 }
 
 #[derive(Debug, Clone)]
@@ -39,12 +40,12 @@ impl Assignment {
 }
 
 #[derive(Debug, Clone)]
-pub struct ReAssign {
+pub struct Local {
     pub target: Name,
     pub value: Expression,
 }
 
-impl ReAssign {
+impl Local {
     pub fn new(target: Name, value: Expression) -> Self {
         Self { target, value }
     }
@@ -106,9 +107,20 @@ pub struct Constant {
 
 #[derive(Debug, Clone)]
 pub enum Expression {
+    // A function call e.g. f();
     Call(Call),
+
+    // A literal value e.g. 10.0
     Literal(Value),
+
+    // A variable identifier e.g. x;
     Identifier(String),
+
+    // Address-of a variable e.g. &x; gets the address of x.
+    AddressOf(String),
+
+    // de-referencing a variable e.g. *x;
+    DeRef(String),
 }
 
 #[derive(Debug, Clone)]
@@ -116,6 +128,6 @@ pub enum Stmt {
     Return(Expression),
     If(Expression, Vec<Stmt>, Option<Vec<Stmt>>),
     Assign(Assignment),
-    ReAssign(ReAssign),
+    ReAssign(Local),
     Call(Call),
 }
