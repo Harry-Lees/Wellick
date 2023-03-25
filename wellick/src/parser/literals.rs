@@ -17,7 +17,7 @@ fn hexadecimal(input: &str) -> IResult<&str, Value> {
                 many0(char('_')),
             ))),
         ),
-        |value: &str| Value::Integer(value.parse::<isize>().unwrap()),
+        |value: &str| Value::I32(value.parse::<i32>().unwrap()),
     )(input)
 }
 
@@ -27,14 +27,14 @@ fn octal(input: &str) -> IResult<&str, Value> {
             tag_no_case("0o"),
             recognize(many1(terminated(one_of("01234567"), many0(char('_'))))),
         ),
-        |value: &str| Value::Integer(value.parse::<isize>().unwrap()),
+        |value: &str| Value::I32(value.parse::<i32>().unwrap()),
     )(input)
 }
 
 fn decimal(input: &str) -> IResult<&str, Value> {
     map(
         recognize(many1(terminated(one_of("0123456789"), many0(char('_'))))),
-        |value: &str| Value::Integer(value.parse::<isize>().unwrap()),
+        |value: &str| Value::I32(value.parse::<i32>().unwrap()),
     )(input)
 }
 
@@ -56,7 +56,7 @@ fn float(input: &str) -> IResult<&str, Value> {
             ))), // Case three: 42. and 42.42
             recognize(tuple((decimal, char('.'), opt(decimal)))),
         )),
-        |value: &str| Value::Float(value.parse::<f32>().unwrap()),
+        |value: &str| Value::F32(value.parse::<f32>().unwrap()),
     )(input)
 }
 

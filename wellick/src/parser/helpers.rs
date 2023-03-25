@@ -1,12 +1,12 @@
-use super::ast::{EmptyType, Name};
+use super::ast::{EmptyType, FloatType, IntegerType, Name};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, alphanumeric1, multispace0};
 use nom::combinator::{map, recognize};
 use nom::error::ParseError;
 use nom::multi::many0_count;
-use nom::sequence::delimited;
 use nom::sequence::pair;
+use nom::sequence::{delimited, preceded};
 use nom::IResult;
 
 /// From the nom [docs](https://github.com/rust-bakery/nom/blob/main/doc/nom_recipes.md#wrapper-combinators-that-eat-whitespace-before-and-after-a-parser)
@@ -49,13 +49,21 @@ pub fn identifier_to_obj(input: &str) -> IResult<&str, Name> {
 }
 
 pub fn arg_type(input: &str) -> IResult<&str, EmptyType> {
-    map(
-        alt((tag("float"), tag("int"), tag("isize"))),
-        |val| match val {
-            "float" => EmptyType::Float,
-            "int" => EmptyType::Integer,
-            "isize" => EmptyType::Pointer,
-            val => panic!("Unsupported type {val:?}"),
-        },
-    )(input)
+    println!("in arg_type {input}");
+    alt((
+        map(
+            alt((tag("f32"), tag("f64"), tag("i32"), tag("i64"), tag("isize"))),
+            |val| match val {
+                "f32" => EmptyType::Float(FloatType::F32),
+                "f64" => EmptyType::Float(FloatType::F64),
+                "i32" => EmptyType::Integer(IntegerType::I32),
+                "i64" => EmptyType::Integer(IntegerType::I64),
+                "isize" => EmptyType::Integer(IntegerType::PointerSize),
+                _ => unreachable!(),
+            },
+        ),
+        map(preceded(tag("*"), arg_type), |val| {
+            EmptyType::Pointer(Box::new(val))
+        }),
+    ))(input)
 }
