@@ -46,13 +46,18 @@ pub fn reference(input: &str) -> IResult<&str, Name> {
     preceded(char('&'), identifier_to_obj)(input)
 }
 
+pub fn dereference(input: &str) -> IResult<&str, Name> {
+    preceded(char('*'), identifier_to_obj)(input)
+}
+
 pub fn expression(input: &str) -> IResult<&str, Expression> {
     delimited(
         multispace0,
         alt((
             map(literal, |x| Expression::Literal(x)),
             map(func_call, |x| Expression::Call(x)),
-            map(reference, |x| Expression::Reference(x.ident)),
+            map(reference, |x| Expression::AddressOf(x.ident)),
+            map(dereference, |x| Expression::DeRef(x.ident)),
             map(identifier_to_obj, |x| Expression::Identifier(x.ident)),
         )),
         multispace0,
