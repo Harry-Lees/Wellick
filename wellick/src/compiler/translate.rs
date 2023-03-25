@@ -74,8 +74,8 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
         match expr {
             ast::Expression::Call(val) => self.translate_call(val),
             ast::Expression::Literal(val) => match val {
-                ast::Value::Float(value) => self.builder.ins().f32const(*value),
-                ast::Value::Integer(value) => self.builder.ins().iconst(types::I64, *value as i64),
+                ast::Value::F32(value) => self.builder.ins().f32const(*value),
+                ast::Value::I32(value) => self.builder.ins().iconst(types::I32, *value as i64),
             },
             ast::Expression::Identifier(value) => {
                 let var = self
@@ -93,7 +93,11 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                     .get(value)
                     .expect("No variable with that name could be found");
 
-                let stack_addr = self.builder.ins().stack_addr(var.var_type, var.loc, 0);
+                let stack_addr = self.builder.ins().stack_addr(
+                    self.module.target_config().pointer_type(),
+                    var.loc,
+                    0,
+                );
                 stack_addr
             }
             // Dereference a pointer and return the value at that address.
@@ -104,8 +108,14 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                     .expect("No variable with that name could be found");
 
                 // Load the pointer from the stack slot.
-                let stack_ptr = self.builder.ins().stack_load(types::I64, var.loc, 0);
+                let stack_ptr = self.builder.ins().stack_load(
+                    // The pointer itself will always be the target's pointer size.
+                    self.module.target_config().pointer_type(),
+                    var.loc,
+                    0,
+                );
 
+                println!("Dereferencing variable of type {:?}", var.var_type);
                 // Load the value pointed to by "stack_ptr"
                 let val = self
                     .builder
@@ -169,6 +179,15 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
             .variables
             .get(name)
             .expect(format!("No variable named {}", name).as_str());
+
+        let value_type = self.builder.func.dfg.value_type(value);
+        if value_type != var.var_type {
+            println!(
+                "Cannot convert type from {} to {}",
+                value_type, var.var_type
+            );
+            process::exit(1);
+        };
 
         self.builder.ins().stack_store(value, var.loc, 0);
         value

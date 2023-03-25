@@ -1,4 +1,5 @@
 use super::ast;
+use super::ast::{FloatType, IntegerType};
 use cranelift::prelude::StackSlotData;
 use cranelift_codegen::ir::StackSlot;
 use cranelift_codegen::ir::{types, Block};
@@ -10,9 +11,14 @@ use std::collections::HashMap;
 /// a valid Cranelift IR type.
 pub(crate) fn to_cranelift_type(t: &ast::EmptyType) -> types::Type {
     match t {
-        ast::EmptyType::Float => types::F64,
-        ast::EmptyType::Integer => types::I64,
-        ast::EmptyType::Pointer => types::I64,
+        ast::EmptyType::Float(FloatType::F32) => types::F32,
+        ast::EmptyType::Float(FloatType::F64) => types::F64,
+        ast::EmptyType::Integer(IntegerType::I32) => types::I32,
+        ast::EmptyType::Integer(IntegerType::I64) => types::I64,
+        // TODO: This only works for platforms with a 64bit integer size.
+        ast::EmptyType::Integer(IntegerType::PointerSize) => types::I64,
+        // TODO: This also only works for platforms with a 64bit pointer size.
+        ast::EmptyType::Pointer(_) => types::I64,
     }
 }
 
@@ -84,16 +90,14 @@ fn declare_variables_in_stmt(
 ) {
     match expr {
         ast::Stmt::Assign(ref assignment) => {
-            if assignment.var_type.is_some() {
-                alloc(
-                    assignment.target.ident.clone(),
-                    to_cranelift_type(&assignment.var_type.clone().unwrap()),
-                    assignment.mutable,
-                    builder,
-                    index,
-                    variables,
-                );
-            }
+            alloc(
+                assignment.target.ident.clone(),
+                to_cranelift_type(&assignment.var_type.clone()),
+                assignment.mutable,
+                builder,
+                index,
+                variables,
+            );
         }
         ast::Stmt::If(ref _condition, ref if_body, ref else_body) => {
             for stmt in if_body {

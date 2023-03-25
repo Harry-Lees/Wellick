@@ -6,7 +6,6 @@ use crate::parser::ast;
 use cranelift::codegen;
 use cranelift::prelude::AbiParam;
 use cranelift::prelude::Configurable;
-use cranelift_codegen::ir::types;
 use cranelift_frontend::{FunctionBuilder, FunctionBuilderContext};
 use cranelift_module::{DataContext, Linkage, Module};
 use cranelift_native::builder as host_isa_builder;
