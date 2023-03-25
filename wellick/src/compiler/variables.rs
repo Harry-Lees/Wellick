@@ -11,15 +11,9 @@ use std::collections::HashMap;
 pub(crate) fn to_cranelift_type(t: &ast::EmptyType) -> types::Type {
     match t {
         ast::EmptyType::Float => types::F64,
-        ast::EmptyType::Integer => types::I32,
+        ast::EmptyType::Integer => types::I64,
         ast::EmptyType::Pointer => types::I64,
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum VarLoc {
-    StackSlot(StackSlot),
-    Register,
 }
 
 /// A Variable declaration, holds the name, type, cranelift ref,
@@ -29,7 +23,7 @@ pub struct Variable {
     pub name: String,
     pub var_type: types::Type,
     pub reference: cranelift_Variable,
-    pub loc: VarLoc,
+    pub loc: StackSlot,
     pub mutable: bool,
 }
 
@@ -38,7 +32,7 @@ impl Variable {
         name: String,
         var_type: types::Type,
         reference: cranelift_Variable,
-        loc: VarLoc,
+        loc: StackSlot,
         mutable: bool,
     ) -> Self {
         Self {
@@ -138,36 +132,9 @@ fn alloc(
         name.clone(),
         var_type,
         cranelift_Variable::from_u32(*index as u32),
-        VarLoc::StackSlot(stack_slot),
+        stack_slot,
         mutable,
     );
-    variables.insert(name, var.clone());
-    *index += 1;
-    var
-}
-
-/// Allocate a register for a variable.
-/// Allocating in this way disallows getting local pointers
-/// to variables.
-fn reg_alloc(
-    name: String,
-    var_type: types::Type,
-    mutable: bool,
-    builder: &mut FunctionBuilder,
-    index: &mut usize,
-    variables: &mut HashMap<String, Variable>,
-) -> Variable {
-    if variables.contains_key(&name) {
-        panic!("Cannot re-declare variable {}", name);
-    }
-    let var = Variable::new(
-        name.clone(),
-        var_type,
-        cranelift_Variable::from_u32(*index as u32),
-        VarLoc::Register,
-        mutable,
-    );
-    builder.declare_var(var.reference, var.var_type);
     variables.insert(name, var.clone());
     *index += 1;
     var
