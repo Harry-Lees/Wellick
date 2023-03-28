@@ -22,7 +22,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     outfile = pathlib.Path("a.out")
-    env = {**os.environ, "RUST_BACKTRACE": "1"}
+    env = {**os.environ, "RUST_BACKTRACE": "full"}
 
     if outfile.is_file():
         outfile.unlink()
@@ -41,6 +41,8 @@ if __name__ == "__main__":
     if platform.system() == "Windows":
         if compile_stdlib:
             cprint("Compiling stdlib", GREEN)
+            os.unlink("builtins.obj")
+            os.unlink("builtins.dll")
             subprocess.check_call(["cl", "builtins.c", "/LD", "/MD", "/Wall"])
         subprocess.check_call(["LINK", outfile, "builtins", "/SUBSYSTEM:CONSOLE"])
         result = subprocess.run(["a.exe"])
