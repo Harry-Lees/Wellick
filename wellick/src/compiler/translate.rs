@@ -42,8 +42,7 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
     ) -> Value {
         let then_block = self.builder.create_block();
         let merge_block = self.builder.create_block();
-        let cond_expr = self.translate_expr(condition);
-        let cond = self.builder.ins().icmp_imm(IntCC::Equal, cond_expr, 1);
+        let cond = self.translate_expr(condition);
         self.builder
             .ins()
             .brif(cond, then_block, &[], merge_block, &[]);
