@@ -4,32 +4,40 @@ use std::option::Option;
 /// value, used in AST constructs like assignments
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Value {
-    Float(f32),
-    Integer(isize),
+    F32(f32),
+    I32(i32),
+}
+
+#[derive(Debug, Clone)]
+pub enum IntegerType {
+    I32,
+    I64,
+    PointerSize,
+}
+
+#[derive(Debug, Clone)]
+pub enum FloatType {
+    F32,
+    F64,
 }
 
 #[derive(Debug, Clone)]
 pub enum EmptyType {
-    Float,
-    Integer,
-    Pointer,
+    Float(FloatType),
+    Integer(IntegerType),
+    Pointer(Box<EmptyType>),
 }
 
 #[derive(Debug, Clone)]
 pub struct Assignment {
     pub target: Name,
     pub value: Expression,
-    pub var_type: Option<EmptyType>,
+    pub var_type: EmptyType,
     pub mutable: bool,
 }
 
 impl Assignment {
-    pub fn new(
-        target: Name,
-        var_type: Option<EmptyType>,
-        value: Expression,
-        mutable: bool,
-    ) -> Self {
+    pub fn new(target: Name, var_type: EmptyType, value: Expression, mutable: bool) -> Self {
         Self {
             target,
             var_type,

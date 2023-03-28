@@ -1,4 +1,5 @@
 use super::ast;
+use super::ast::{FloatType, IntegerType};
 use cranelift::prelude::StackSlotData;
 use cranelift_codegen::ir::StackSlot;
 use cranelift_codegen::ir::{types, Block};
@@ -10,38 +11,101 @@ use std::collections::HashMap;
 /// a valid Cranelift IR type.
 pub(crate) fn to_cranelift_type(t: &ast::EmptyType) -> types::Type {
     match t {
-        ast::EmptyType::Float => types::F64,
-        ast::EmptyType::Integer => types::I64,
-        ast::EmptyType::Pointer => types::I64,
+        ast::EmptyType::Float(FloatType::F32) => types::F32,
+        ast::EmptyType::Float(FloatType::F64) => types::F64,
+        ast::EmptyType::Integer(IntegerType::I32) => types::I32,
+        ast::EmptyType::Integer(IntegerType::I64) => types::I64,
+        // TODO: This only works for platforms with a 64bit integer size.
+        ast::EmptyType::Integer(IntegerType::PointerSize) => types::I64,
+        // TODO: This also only works for platforms with a 64bit pointer size.
+        ast::EmptyType::Pointer(_) => types::I64,
     }
 }
 
-/// A Variable declaration, holds the name, type, cranelift ref,
-/// and the mutability of the variable.
 #[derive(Debug, Clone)]
-pub struct Variable {
+pub struct StackVar {
     pub name: String,
-    pub var_type: types::Type,
-    pub reference: cranelift_Variable,
-    pub loc: StackSlot,
+    pub ty: types::Type,
+    pub base: StackSlot,
     pub mutable: bool,
 }
 
-impl Variable {
-    fn new(
-        name: String,
-        var_type: types::Type,
-        reference: cranelift_Variable,
-        loc: StackSlot,
-        mutable: bool,
-    ) -> Self {
+#[derive(Debug, Clone)]
+pub struct RegVar {
+    pub name: String,
+    pub ty: types::Type,
+    pub base: cranelift_Variable,
+    pub mutable: bool,
+}
+
+pub enum Variable {
+    Stack(StackVar),
+    Register(RegVar),
+}
+
+impl StackVar {
+    fn new(name: String, ty: types::Type, base: StackSlot, mutable: bool) -> Self {
         Self {
             name,
-            var_type,
+            ty,
             mutable,
-            reference,
-            loc,
+            base,
         }
+    }
+
+    fn alloc(
+        name: String,
+        ty: types::Type,
+        mutable: bool,
+        builder: &mut FunctionBuilder,
+        index: &mut usize,
+        variables: &mut HashMap<String, Variable>,
+    ) -> Self {
+        if variables.contains_key(&name) {
+            panic!("Cannot re-declare variable {}", name);
+        }
+
+        let stack_slot = builder.create_sized_stack_slot(StackSlotData::new(
+            cranelift::prelude::StackSlotKind::ExplicitSlot,
+            ty.bytes(),
+        ));
+
+        let var = Self::new(name.clone(), ty, stack_slot, mutable);
+        variables.insert(name, Variable::Stack(var.clone()));
+        *index += 1;
+        var
+    }
+}
+
+impl RegVar {
+    fn new(name: String, ty: types::Type, base: cranelift_Variable, mutable: bool) -> Self {
+        Self {
+            name,
+            ty,
+            mutable,
+            base,
+        }
+    }
+
+    fn alloc(
+        name: String,
+        ty: types::Type,
+        mutable: bool,
+        builder: &mut FunctionBuilder,
+        index: &mut usize,
+        variables: &mut HashMap<String, Variable>,
+    ) -> Self {
+        if variables.contains_key(&name) {
+            panic!("Cannot re-declare variable {}", name);
+        }
+
+        let var_ref = cranelift_Variable::from_u32(*index as u32);
+        builder.declare_var(var_ref, ty);
+
+        let var = Self::new(name.clone(), ty, var_ref, mutable);
+        variables.insert(name, Variable::Register(var.clone()));
+        *index += 1;
+        var
     }
 }
 
@@ -57,7 +121,7 @@ pub fn declare_variables(
     let params = builder.block_params(entry_block).to_vec();
     for (i, arg) in args.iter().enumerate() {
         let val = params[i];
-        let var = alloc(
+        let var = RegVar::alloc(
             arg.name.clone(),
             to_cranelift_type(&arg.t),
             false,
@@ -65,7 +129,7 @@ pub fn declare_variables(
             &mut index,
             &mut variables,
         );
-        builder.def_var(var.reference, val);
+        builder.def_var(var.base, val);
     }
 
     for expr in &node.body {
@@ -84,58 +148,20 @@ fn declare_variables_in_stmt(
 ) {
     match expr {
         ast::Stmt::Assign(ref assignment) => {
-            if assignment.var_type.is_some() {
-                alloc(
-                    assignment.target.ident.clone(),
-                    to_cranelift_type(&assignment.var_type.clone().unwrap()),
-                    assignment.mutable,
-                    builder,
-                    index,
-                    variables,
-                );
-            }
+            StackVar::alloc(
+                assignment.target.ident.clone(),
+                to_cranelift_type(&assignment.var_type.clone()),
+                assignment.mutable,
+                builder,
+                index,
+                variables,
+            );
         }
         ast::Stmt::If(ref _condition, ref if_body, ref else_body) => {
             for stmt in if_body {
                 declare_variables_in_stmt(stmt, builder, index, variables);
             }
-
-            if else_body.is_some() {
-                todo!("else block not currently implemented");
-            }
         }
         _ => {}
     }
-}
-
-/// Allocate a stack slot for a variable.
-/// Allocating in this way allows grabbing a pointer
-/// to a local variable.
-fn alloc(
-    name: String,
-    var_type: types::Type,
-    mutable: bool,
-    builder: &mut FunctionBuilder,
-    index: &mut usize,
-    variables: &mut HashMap<String, Variable>,
-) -> Variable {
-    if variables.contains_key(&name) {
-        panic!("Cannot re-declare variable {}", name);
-    }
-
-    let stack_slot = builder.create_sized_stack_slot(StackSlotData::new(
-        cranelift::prelude::StackSlotKind::ExplicitSlot,
-        var_type.bytes(),
-    ));
-
-    let var = Variable::new(
-        name.clone(),
-        var_type,
-        cranelift_Variable::from_u32(*index as u32),
-        stack_slot,
-        mutable,
-    );
-    variables.insert(name, var.clone());
-    *index += 1;
-    var
 }

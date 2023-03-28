@@ -71,7 +71,7 @@ pub fn assignment(input: &str) -> IResult<&str, Assignment> {
             tuple((
                 ws(mutable_qualifier),
                 identifier_to_obj,
-                opt(preceded(ws(tag(":")), arg_type)),
+                preceded(ws(tag(":")), arg_type),
                 ws(char('=')),
                 expression,
             )),

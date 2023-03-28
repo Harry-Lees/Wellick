@@ -14,6 +14,10 @@ int print(uint64_t inp) {
     return printf("%" PRId64, inp);
 }
 
+int println_32(int32_t inp) {
+    return printf("%d\n", inp);
+}
+
 // Print a string to stdout with a newline
 int println(uint64_t inp) {
     return printf("%" PRId64 "\n", inp);
@@ -49,7 +53,15 @@ uint32_t ilt (uint32_t a, uint16_t b) {
     return a < b;
 }
 
+uint32_t ilteq (uint32_t a, uint16_t b) {
+    return a <= b;
+}
+
 // Check if the first integer is greater than the second, return 1 if true, 0 if false
 uint32_t igt (uint32_t a, uint16_t b) {
     return a > b;
+}
+
+void terminate(int code) {
+    exit(code);
 }
