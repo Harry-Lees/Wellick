@@ -1,10 +1,13 @@
 use super::ast;
 use super::variables;
+use super::variables::{RegVar, StackVar, Variable};
 
 use cranelift::prelude::AbiParam;
 use cranelift::prelude::InstBuilder;
 use cranelift::prelude::MemFlags;
-use cranelift_codegen::ir::{entities::Value, types};
+use cranelift::prelude::TrapCode;
+use cranelift_codegen::ir::{condcodes::IntCC, entities::Value, types};
+use cranelift_codegen::isa::aarch64::inst::Cond;
 use cranelift_frontend::FunctionBuilder;
 use cranelift_module::{Linkage, Module};
 use cranelift_object::ObjectModule;
@@ -37,18 +40,28 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
         if_body: &Vec<ast::Stmt>,
         else_body: &Option<Vec<ast::Stmt>>,
     ) -> Value {
-        let condition_value = self.translate_expr(condition);
-
         let then_block = self.builder.create_block();
         let merge_block = self.builder.create_block();
-        self.builder.ins().brz(condition_value, then_block, &[]);
-        self.builder.ins().jump(merge_block, &[]);
+        let cond_expr = self.translate_expr(condition);
+        let cond = self.builder.ins().icmp_imm(IntCC::Equal, cond_expr, 1);
+        self.builder
+            .ins()
+            .brif(cond, then_block, &[], merge_block, &[]);
         self.builder.switch_to_block(then_block);
         self.builder.seal_block(then_block);
 
         let mut then_return: Option<Value> = None;
         for expr in if_body {
-            then_return = Some(self.translate_stmt(expr));
+            match expr {
+                // If a terminator expression, like return, is encountered, we don't
+                // need to process the rest of the instructions since they're automatically
+                // unreachable code.
+                ast::Stmt::Return(stmt) => {
+                    then_return = Some(self.translate_return(stmt));
+                    break;
+                }
+                stmt => then_return = Some(self.translate_stmt(stmt)),
+            }
         }
         if then_return.is_none() {
             panic!("If statement has no body");
@@ -83,7 +96,10 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                     .get(value)
                     .expect("No variable with that name could be found");
 
-                self.builder.ins().stack_load(var.var_type, var.loc, 0)
+                match var {
+                    Variable::Stack(var) => self.builder.ins().stack_load(var.ty, var.base, 0),
+                    Variable::Register(var) => self.builder.use_var(var.base),
+                }
             }
             // Address-Of a value, returns a pointer pointing to the stack slot
             // of the variable.
@@ -93,12 +109,14 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                     .get(value)
                     .expect("No variable with that name could be found");
 
-                let stack_addr = self.builder.ins().stack_addr(
-                    self.module.target_config().pointer_type(),
-                    var.loc,
-                    0,
-                );
-                stack_addr
+                match var {
+                    Variable::Stack(var) => self.builder.ins().stack_addr(
+                        self.module.target_config().pointer_type(),
+                        var.base,
+                        0,
+                    ),
+                    Variable::Register(_) => panic!("Pointer to register variables unsupported"),
+                }
             }
             // Dereference a pointer and return the value at that address.
             ast::Expression::DeRef(value) => {
@@ -107,21 +125,21 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                     .get(value)
                     .expect("No variable with that name could be found");
 
-                // Load the pointer from the stack slot.
-                let stack_ptr = self.builder.ins().stack_load(
-                    // The pointer itself will always be the target's pointer size.
-                    self.module.target_config().pointer_type(),
-                    var.loc,
-                    0,
-                );
-
-                println!("Dereferencing variable of type {:?}", var.var_type);
-                // Load the value pointed to by "stack_ptr"
-                let val = self
-                    .builder
-                    .ins()
-                    .load(var.var_type, MemFlags::new(), stack_ptr, 0);
-                val
+                match var {
+                    Variable::Stack(var) => {
+                        let stack_ptr = self.builder.ins().stack_load(
+                            self.module.target_config().pointer_type(),
+                            var.base,
+                            0,
+                        );
+                        self.builder
+                            .ins()
+                            .load(var.ty, MemFlags::new(), stack_ptr, 0)
+                    }
+                    Variable::Register(_) => {
+                        panic!("Unsupported operation, dereferencing register variable");
+                    }
+                }
             }
         }
     }
@@ -132,7 +150,6 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
         for arg in &expr.args {
             let func_arg = self.translate_expr(arg);
             arg_values.push(func_arg);
-            // let arg_type = self.builder.ins().data_flow_graph().value_type(func_arg);
             let arg_type = self.builder.func.dfg.value_type(func_arg);
             sig.params.push(AbiParam::new(arg_type));
         }
@@ -162,12 +179,22 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
             process::exit(1);
         }
 
-        if !var.unwrap().mutable {
-            println!("Cannot mutate immutable variable {name}");
-            process::exit(1);
+        match var.unwrap() {
+            Variable::Register(var) => {
+                if !var.mutable {
+                    println!("Cannot mutate immutable variable {name}");
+                    process::exit(1);
+                }
+                self.builder.def_var(var.base, value);
+            }
+            Variable::Stack(var) => {
+                if !var.mutable {
+                    println!("Cannot mutate immutable variable {name}");
+                    process::exit(1);
+                }
+                self.builder.ins().stack_store(value, var.base, 0);
+            }
         }
-
-        self.builder.def_var(var.unwrap().reference, value);
 
         value
     }
@@ -180,16 +207,21 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
             .get(name)
             .expect(format!("No variable named {}", name).as_str());
 
-        let value_type = self.builder.func.dfg.value_type(value);
-        if value_type != var.var_type {
-            println!(
-                "Cannot convert type from {} to {}",
-                value_type, var.var_type
-            );
-            process::exit(1);
-        };
+        match var {
+            Variable::Register(_) => {
+                unimplemented!("unsupported operation, assignment to register variable")
+            }
+            Variable::Stack(var) => {
+                let value_type = self.builder.func.dfg.value_type(value);
+                if value_type != var.ty {
+                    println!("Cannot convert type from {} to {}", value_type, var.ty);
+                    process::exit(1);
+                };
 
-        self.builder.ins().stack_store(value, var.loc, 0);
+                self.builder.ins().stack_store(value, var.base, 0);
+            }
+        }
+
         value
     }
 }
