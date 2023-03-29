@@ -1,13 +1,13 @@
+use crate::parser::ast::EmptyType;
+
 use super::ast;
 use super::variables;
-use super::variables::{RegVar, StackVar, Variable};
+use super::variables::{to_cranelift_type, Variable};
 
 use cranelift::prelude::AbiParam;
 use cranelift::prelude::InstBuilder;
 use cranelift::prelude::MemFlags;
-use cranelift::prelude::TrapCode;
-use cranelift_codegen::ir::{condcodes::IntCC, entities::Value, types};
-use cranelift_codegen::isa::aarch64::inst::Cond;
+use cranelift_codegen::ir::{entities::Value, types};
 use cranelift_frontend::FunctionBuilder;
 use cranelift_module::{Linkage, Module};
 use cranelift_object::ObjectModule;
@@ -96,7 +96,11 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                     .expect("No variable with that name could be found");
 
                 match var {
-                    Variable::Stack(var) => self.builder.ins().stack_load(var.ty, var.base, 0),
+                    Variable::Stack(var) => {
+                        self.builder
+                            .ins()
+                            .stack_load(to_cranelift_type(&var.ty), var.base, 0)
+                    }
                     Variable::Register(var) => self.builder.use_var(var.base),
                 }
             }
@@ -126,14 +130,25 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
 
                 match var {
                     Variable::Stack(var) => {
+                        let var_type = match &var.ty {
+                            EmptyType::Pointer(ty) => to_cranelift_type(ty),
+                            ty => {
+                                unimplemented!(
+                                    "unsupported operation, dereferencing type {:?}",
+                                    ty
+                                );
+                            }
+                        };
+
                         let stack_ptr = self.builder.ins().stack_load(
                             self.module.target_config().pointer_type(),
                             var.base,
                             0,
                         );
+
                         self.builder
                             .ins()
-                            .load(var.ty, MemFlags::new(), stack_ptr, 0)
+                            .load(var_type, MemFlags::new(), stack_ptr, 0)
                     }
                     Variable::Register(_) => {
                         panic!("Unsupported operation, dereferencing register variable");
@@ -212,8 +227,12 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
             }
             Variable::Stack(var) => {
                 let value_type = self.builder.func.dfg.value_type(value);
-                if value_type != var.ty {
-                    println!("Cannot convert type from {} to {}", value_type, var.ty);
+                if value_type != to_cranelift_type(&var.ty) {
+                    println!(
+                        "Cannot convert type from {} to {}",
+                        value_type,
+                        to_cranelift_type(&var.ty)
+                    );
                     process::exit(1);
                 };
 
