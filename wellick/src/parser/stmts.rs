@@ -12,7 +12,6 @@ use nom::sequence::{delimited, preceded, separated_pair, terminated, tuple};
 use nom::IResult;
 
 pub fn if_stmt(input: &str) -> IResult<&str, (Expression, Vec<Stmt>, Option<Vec<Stmt>>)> {
-    println!("In if_stmt");
     map(
         tuple((
             preceded(tag("if"), ws(expression)),
@@ -23,7 +22,6 @@ pub fn if_stmt(input: &str) -> IResult<&str, (Expression, Vec<Stmt>, Option<Vec<
 }
 
 fn function_args(input: &str) -> IResult<&str, Vec<FnArg>> {
-    println!("In function args");
     map(
         terminated(
             separated_list0(tag(","), separated_pair(identifier, ws(tag(":")), arg_type)),
@@ -38,7 +36,6 @@ fn function_args(input: &str) -> IResult<&str, Vec<FnArg>> {
 }
 
 pub fn function(input: &str) -> IResult<&str, FnDecl> {
-    println!("Parsing func");
     map(
         tuple((
             preceded(terminated(tag("fn"), space1), identifier),
