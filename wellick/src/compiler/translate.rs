@@ -1,13 +1,13 @@
+use crate::parser::ast::EmptyType;
+
 use super::ast;
 use super::variables;
-use super::variables::{RegVar, StackVar, Variable};
+use super::variables::{to_cranelift_type, Variable};
 
 use cranelift::prelude::AbiParam;
 use cranelift::prelude::InstBuilder;
 use cranelift::prelude::MemFlags;
-use cranelift::prelude::TrapCode;
-use cranelift_codegen::ir::{condcodes::IntCC, entities::Value, types};
-use cranelift_codegen::isa::aarch64::inst::Cond;
+use cranelift_codegen::ir::{entities::Value, types};
 use cranelift_frontend::FunctionBuilder;
 use cranelift_module::{Linkage, Module};
 use cranelift_object::ObjectModule;
@@ -86,8 +86,14 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
         match expr {
             ast::Expression::Call(val) => self.translate_call(val),
             ast::Expression::Literal(val) => match val {
-                ast::Value::F32(value) => self.builder.ins().f32const(*value),
-                ast::Value::I32(value) => self.builder.ins().iconst(types::I32, *value as i64),
+                ast::Literal::Float(value) => self
+                    .builder
+                    .ins()
+                    .f32const(value.base10_parse::<f32>().unwrap()),
+                ast::Literal::Integer(value) => self
+                    .builder
+                    .ins()
+                    .iconst(types::I32, value.base10_parse::<i64>().unwrap()),
             },
             ast::Expression::Identifier(value) => {
                 let var = self
@@ -96,7 +102,11 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                     .expect("No variable with that name could be found");
 
                 match var {
-                    Variable::Stack(var) => self.builder.ins().stack_load(var.ty, var.base, 0),
+                    Variable::Stack(var) => {
+                        self.builder
+                            .ins()
+                            .stack_load(to_cranelift_type(&var.ty), var.base, 0)
+                    }
                     Variable::Register(var) => self.builder.use_var(var.base),
                 }
             }
@@ -126,14 +136,25 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
 
                 match var {
                     Variable::Stack(var) => {
+                        let var_type = match &var.ty {
+                            EmptyType::Pointer(ty) => to_cranelift_type(ty),
+                            ty => {
+                                unimplemented!(
+                                    "unsupported operation, dereferencing type {:?}",
+                                    ty
+                                );
+                            }
+                        };
+
                         let stack_ptr = self.builder.ins().stack_load(
                             self.module.target_config().pointer_type(),
                             var.base,
                             0,
                         );
+
                         self.builder
                             .ins()
-                            .load(var.ty, MemFlags::new(), stack_ptr, 0)
+                            .load(var_type, MemFlags::new(), stack_ptr, 0)
                     }
                     Variable::Register(_) => {
                         panic!("Unsupported operation, dereferencing register variable");
@@ -200,11 +221,54 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
 
     fn translate_assign(&mut self, expr: &ast::Assignment) -> Value {
         let name = &expr.target.ident;
-        let value = self.translate_expr(&expr.value);
-        let var = self
+
+        let var = &self
             .variables
             .get(name)
-            .expect(format!("No variable named {}", name).as_str());
+            .expect(format!("No variable named {}", name).as_str())
+            .clone();
+
+        let value = match &expr.value {
+            ast::Expression::Literal(literal) => match literal {
+                ast::Literal::Float(val) => match var.ty() {
+                    ast::EmptyType::Float(ast::FloatType::F32) => self
+                        .builder
+                        .ins()
+                        .f32const(val.base10_parse::<f32>().unwrap()),
+                    ast::EmptyType::Float(ast::FloatType::F64) => self
+                        .builder
+                        .ins()
+                        .f64const(val.base10_parse::<f64>().unwrap()),
+                    _ => {
+                        println!("Cannot convert {:?} to {:?}", val, var.ty());
+                        process::exit(1);
+                    }
+                },
+                ast::Literal::Integer(val) => match var.ty() {
+                    ast::EmptyType::Integer(ast::IntegerType::I32) => self
+                        .builder
+                        .ins()
+                        .iconst(types::I32, val.base10_parse::<i64>().unwrap()),
+                    ast::EmptyType::Integer(ast::IntegerType::I64) => self
+                        .builder
+                        .ins()
+                        .iconst(types::I64, val.base10_parse::<i64>().unwrap()),
+                    ast::EmptyType::Integer(ast::IntegerType::PointerSize) => self
+                        .builder
+                        .ins()
+                        .iconst(types::I64, val.base10_parse::<i64>().unwrap()),
+                    ast::EmptyType::Pointer(_) => self
+                        .builder
+                        .ins()
+                        .iconst(types::I64, val.base10_parse::<i64>().unwrap()),
+                    _ => {
+                        println!("Cannot convert {:?} to {:?}", val, var.ty());
+                        process::exit(1);
+                    }
+                },
+            },
+            value => self.translate_expr(value),
+        };
 
         match var {
             Variable::Register(_) => {
@@ -212,8 +276,12 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
             }
             Variable::Stack(var) => {
                 let value_type = self.builder.func.dfg.value_type(value);
-                if value_type != var.ty {
-                    println!("Cannot convert type from {} to {}", value_type, var.ty);
+                if value_type != to_cranelift_type(&var.ty) {
+                    println!(
+                        "Cannot convert type from {} to {}",
+                        value_type,
+                        to_cranelift_type(&var.ty)
+                    );
                     process::exit(1);
                 };
 

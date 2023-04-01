@@ -6,6 +6,7 @@ use cranelift_codegen::ir::{types, Block};
 use cranelift_frontend::FunctionBuilder;
 use cranelift_frontend::Variable as cranelift_Variable;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 /// Helper function to convert the EmptyType AST node to
 /// a valid Cranelift IR type.
@@ -25,7 +26,7 @@ pub(crate) fn to_cranelift_type(t: &ast::EmptyType) -> types::Type {
 #[derive(Debug, Clone)]
 pub struct StackVar {
     pub name: String,
-    pub ty: types::Type,
+    pub ty: ast::EmptyType,
     pub base: StackSlot,
     pub mutable: bool,
 }
@@ -33,18 +34,19 @@ pub struct StackVar {
 #[derive(Debug, Clone)]
 pub struct RegVar {
     pub name: String,
-    pub ty: types::Type,
+    pub ty: ast::EmptyType,
     pub base: cranelift_Variable,
     pub mutable: bool,
 }
 
+#[derive(Debug, Clone)]
 pub enum Variable {
     Stack(StackVar),
     Register(RegVar),
 }
 
 impl StackVar {
-    fn new(name: String, ty: types::Type, base: StackSlot, mutable: bool) -> Self {
+    fn new(name: String, ty: ast::EmptyType, base: StackSlot, mutable: bool) -> Self {
         Self {
             name,
             ty,
@@ -55,7 +57,7 @@ impl StackVar {
 
     fn alloc(
         name: String,
-        ty: types::Type,
+        ty: ast::EmptyType,
         mutable: bool,
         builder: &mut FunctionBuilder,
         index: &mut usize,
@@ -67,7 +69,7 @@ impl StackVar {
 
         let stack_slot = builder.create_sized_stack_slot(StackSlotData::new(
             cranelift::prelude::StackSlotKind::ExplicitSlot,
-            ty.bytes(),
+            to_cranelift_type(&ty).bytes(),
         ));
 
         let var = Self::new(name.clone(), ty, stack_slot, mutable);
@@ -78,7 +80,7 @@ impl StackVar {
 }
 
 impl RegVar {
-    fn new(name: String, ty: types::Type, base: cranelift_Variable, mutable: bool) -> Self {
+    fn new(name: String, ty: ast::EmptyType, base: cranelift_Variable, mutable: bool) -> Self {
         Self {
             name,
             ty,
@@ -89,7 +91,7 @@ impl RegVar {
 
     fn alloc(
         name: String,
-        ty: types::Type,
+        ty: ast::EmptyType,
         mutable: bool,
         builder: &mut FunctionBuilder,
         index: &mut usize,
@@ -100,12 +102,21 @@ impl RegVar {
         }
 
         let var_ref = cranelift_Variable::from_u32(*index as u32);
-        builder.declare_var(var_ref, ty);
+        builder.declare_var(var_ref, to_cranelift_type(&ty));
 
         let var = Self::new(name.clone(), ty, var_ref, mutable);
         variables.insert(name, Variable::Register(var.clone()));
         *index += 1;
         var
+    }
+}
+
+impl Variable {
+    pub fn ty(&self) -> ast::EmptyType {
+        match self {
+            Variable::Stack(var) => var.ty.clone(),
+            Variable::Register(var) => var.ty.clone(),
+        }
     }
 }
 
@@ -123,7 +134,7 @@ pub fn declare_variables(
         let val = params[i];
         let var = RegVar::alloc(
             arg.name.clone(),
-            to_cranelift_type(&arg.t),
+            arg.t.clone(),
             false,
             builder,
             &mut index,
@@ -150,7 +161,7 @@ fn declare_variables_in_stmt(
         ast::Stmt::Assign(ref assignment) => {
             StackVar::alloc(
                 assignment.target.ident.clone(),
-                to_cranelift_type(&assignment.var_type.clone()),
+                assignment.var_type.clone(),
                 assignment.mutable,
                 builder,
                 index,

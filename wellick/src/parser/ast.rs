@@ -1,11 +1,61 @@
-use std::option::Option;
+use std::{
+    fmt::{self, Formatter},
+    option::Option,
+    str::FromStr,
+};
+
+#[derive(Clone)]
+pub struct IntegerLiteral {
+    token: String,
+}
+
+#[derive(Clone)]
+pub struct FloatLiteral {
+    token: String,
+}
+
+impl fmt::Debug for IntegerLiteral {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("IntegerLiteral {}", self.token))
+    }
+}
+
+impl fmt::Debug for FloatLiteral {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("FloatLiteral {}", self.token))
+    }
+}
+
+impl IntegerLiteral {
+    pub fn new(token: &str) -> Self {
+        Self {
+            token: token.to_string(),
+        }
+    }
+
+    pub fn base10_parse<T: FromStr>(&self) -> Result<T, T::Err> {
+        self.token.parse::<T>()
+    }
+}
+
+impl FloatLiteral {
+    pub fn new(token: &str) -> Self {
+        Self {
+            token: token.to_string(),
+        }
+    }
+
+    pub fn base10_parse<T: FromStr>(&self) -> Result<T, T::Err> {
+        self.token.parse::<T>()
+    }
+}
 
 /// Types supported by the language which also hold the corresponding
 /// value, used in AST constructs like assignments
-#[derive(PartialEq, Debug, Clone, Copy)]
-pub enum Value {
-    F32(f32),
-    I32(i32),
+#[derive(Debug, Clone)]
+pub enum Literal {
+    Float(FloatLiteral),
+    Integer(IntegerLiteral),
 }
 
 #[derive(Debug, Clone)]
@@ -119,7 +169,7 @@ pub enum Expression {
     Call(Call),
 
     // A literal value e.g. 10.0
-    Literal(Value),
+    Literal(Literal),
 
     // A variable identifier e.g. x;
     Identifier(String),

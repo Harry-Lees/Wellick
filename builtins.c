@@ -61,7 +61,3 @@ uint32_t ilteq (uint32_t a, uint16_t b) {
 uint32_t igt (uint32_t a, uint16_t b) {
     return a > b;
 }
-
-void terminate(int code) {
-    exit(code);
-}

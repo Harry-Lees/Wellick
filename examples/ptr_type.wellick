@@ -1,8 +1,6 @@
-fn main() -> i32 {
-    let x: i64 = 10;
+fn main() -> i64 {
+    let x: f32 = 99;
     let y: *i64 = &x;
-    println(y);
     let z: i64 = *y;
-    println(z);
-    return 0;
+    return z;
 }
