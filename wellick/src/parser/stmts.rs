@@ -44,7 +44,6 @@ pub fn function(input: &str) -> IResult<&str, FnDecl> {
             delimited(ws(tag("{")), many0(stmt), ws(tag("}"))),
         )),
         |(fn_name, fn_args, ret_type, body)| {
-            println!("Successfully parsed {fn_name}");
             FnDecl::new(fn_name.to_string(), fn_args, ret_type, body)
         },
     )(input)
@@ -91,15 +90,11 @@ pub fn return_(input: &str) -> IResult<&str, Expression> {
 }
 
 pub fn stmt(input: &str) -> IResult<&str, Stmt> {
-    println!("In stmt {input}");
     alt((
         map(if_stmt, |(comparison, body, else_body)| {
             Stmt::If(comparison, body, else_body)
         }),
-        map(terminated(return_, ws(char(';'))), |x| {
-            println!("Successfully parsed return {x:?}");
-            Stmt::Return(x)
-        }),
+        map(terminated(return_, ws(char(';'))), |x| Stmt::Return(x)),
         map(terminated(func_call, ws(char(';'))), |x| Stmt::Call(x)),
         map(terminated(reassign, ws(char(';'))), |x| Stmt::ReAssign(x)),
         map(terminated(assignment, ws(char(';'))), |x| Stmt::Assign(x)),

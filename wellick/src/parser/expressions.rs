@@ -3,16 +3,14 @@ use super::helpers::{identifier, identifier_to_obj, ws};
 use super::literals::literal;
 
 use nom::branch::alt;
-use nom::bytes::complete::{is_not, tag};
+use nom::bytes::complete::tag;
 use nom::character::complete::{char, multispace0};
-use nom::combinator::{map, opt, value};
-use nom::error::ParseError;
+use nom::combinator::{map, opt};
 use nom::multi::separated_list0;
-use nom::sequence::{delimited, pair, preceded, terminated, tuple};
+use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
 pub fn func_call(input: &str) -> IResult<&str, Call> {
-    println!("In func_call {input:?}");
     map(
         tuple((
             // The function name
