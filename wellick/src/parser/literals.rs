@@ -6,9 +6,9 @@ use nom::multi::{many0, many1};
 use nom::sequence::{preceded, terminated, tuple};
 use nom::IResult;
 
-use super::ast::Value;
+use super::ast::{FloatLiteral, IntegerLiteral, Literal};
 
-fn hexadecimal(input: &str) -> IResult<&str, Value> {
+fn hexadecimal(input: &str) -> IResult<&str, Literal> {
     map(
         preceded(
             tag_no_case("0x"),
@@ -17,28 +17,28 @@ fn hexadecimal(input: &str) -> IResult<&str, Value> {
                 many0(char('_')),
             ))),
         ),
-        |value: &str| Value::I32(value.parse::<i32>().unwrap()),
+        |value: &str| Literal::Integer(IntegerLiteral::new(value)),
     )(input)
 }
 
-fn octal(input: &str) -> IResult<&str, Value> {
+fn octal(input: &str) -> IResult<&str, Literal> {
     map(
         preceded(
             tag_no_case("0o"),
             recognize(many1(terminated(one_of("01234567"), many0(char('_'))))),
         ),
-        |value: &str| Value::I32(value.parse::<i32>().unwrap()),
+        |value: &str| Literal::Integer(IntegerLiteral::new(value)),
     )(input)
 }
 
-fn decimal(input: &str) -> IResult<&str, Value> {
+fn decimal(input: &str) -> IResult<&str, Literal> {
     map(
         recognize(many1(terminated(one_of("0123456789"), many0(char('_'))))),
-        |value: &str| Value::I32(value.parse::<i32>().unwrap()),
+        |value: &str| Literal::Integer(IntegerLiteral::new(value)),
     )(input)
 }
 
-fn float(input: &str) -> IResult<&str, Value> {
+fn float(input: &str) -> IResult<&str, Literal> {
     map(
         alt((
             // Case one: .42
@@ -56,11 +56,10 @@ fn float(input: &str) -> IResult<&str, Value> {
             ))), // Case three: 42. and 42.42
             recognize(tuple((decimal, char('.'), opt(decimal)))),
         )),
-        |value: &str| Value::F32(value.parse::<f32>().unwrap()),
+        |value: &str| Literal::Float(FloatLiteral::new(value)),
     )(input)
 }
 
-pub fn literal(input: &str) -> IResult<&str, Value> {
-    println!("in literal {input:?}");
+pub fn literal(input: &str) -> IResult<&str, Literal> {
     alt((float, hexadecimal, octal, decimal))(input)
 }
