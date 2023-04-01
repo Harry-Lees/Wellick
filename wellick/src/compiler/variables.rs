@@ -6,6 +6,7 @@ use cranelift_codegen::ir::{types, Block};
 use cranelift_frontend::FunctionBuilder;
 use cranelift_frontend::Variable as cranelift_Variable;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 /// Helper function to convert the EmptyType AST node to
 /// a valid Cranelift IR type.
@@ -107,6 +108,15 @@ impl RegVar {
         variables.insert(name, Variable::Register(var.clone()));
         *index += 1;
         var
+    }
+}
+
+impl Variable {
+    pub fn ty(&self) -> ast::EmptyType {
+        match self {
+            Variable::Stack(var) => var.ty.clone(),
+            Variable::Register(var) => var.ty.clone(),
+        }
     }
 }
 

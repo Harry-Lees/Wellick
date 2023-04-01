@@ -1,6 +1,6 @@
-fn main() -> i32 {
-    let x: i32 = 99;
-    let y: *i32 = &x;
-    let z: i32 = *y;
+fn main() -> i64 {
+    let x: f32 = 99;
+    let y: *i64 = &x;
+    let z: i64 = *y;
     return z;
 }

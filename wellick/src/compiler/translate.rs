@@ -86,8 +86,14 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
         match expr {
             ast::Expression::Call(val) => self.translate_call(val),
             ast::Expression::Literal(val) => match val {
-                ast::Value::F32(value) => self.builder.ins().f32const(*value),
-                ast::Value::I32(value) => self.builder.ins().iconst(types::I32, *value as i64),
+                ast::Literal::Float(value) => self
+                    .builder
+                    .ins()
+                    .f32const(value.base10_parse::<f32>().unwrap()),
+                ast::Literal::Integer(value) => self
+                    .builder
+                    .ins()
+                    .iconst(types::I32, value.base10_parse::<i64>().unwrap()),
             },
             ast::Expression::Identifier(value) => {
                 let var = self
@@ -215,11 +221,54 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
 
     fn translate_assign(&mut self, expr: &ast::Assignment) -> Value {
         let name = &expr.target.ident;
-        let value = self.translate_expr(&expr.value);
-        let var = self
+
+        let var = &self
             .variables
             .get(name)
-            .expect(format!("No variable named {}", name).as_str());
+            .expect(format!("No variable named {}", name).as_str())
+            .clone();
+
+        let value = match &expr.value {
+            ast::Expression::Literal(literal) => match literal {
+                ast::Literal::Float(val) => match var.ty() {
+                    ast::EmptyType::Float(ast::FloatType::F32) => self
+                        .builder
+                        .ins()
+                        .f32const(val.base10_parse::<f32>().unwrap()),
+                    ast::EmptyType::Float(ast::FloatType::F64) => self
+                        .builder
+                        .ins()
+                        .f64const(val.base10_parse::<f64>().unwrap()),
+                    _ => {
+                        println!("Cannot convert {:?} to {:?}", val, var.ty());
+                        process::exit(1);
+                    }
+                },
+                ast::Literal::Integer(val) => match var.ty() {
+                    ast::EmptyType::Integer(ast::IntegerType::I32) => self
+                        .builder
+                        .ins()
+                        .iconst(types::I32, val.base10_parse::<i64>().unwrap()),
+                    ast::EmptyType::Integer(ast::IntegerType::I64) => self
+                        .builder
+                        .ins()
+                        .iconst(types::I64, val.base10_parse::<i64>().unwrap()),
+                    ast::EmptyType::Integer(ast::IntegerType::PointerSize) => self
+                        .builder
+                        .ins()
+                        .iconst(types::I64, val.base10_parse::<i64>().unwrap()),
+                    ast::EmptyType::Pointer(_) => self
+                        .builder
+                        .ins()
+                        .iconst(types::I64, val.base10_parse::<i64>().unwrap()),
+                    _ => {
+                        println!("Cannot convert {:?} to {:?}", val, var.ty());
+                        process::exit(1);
+                    }
+                },
+            },
+            value => self.translate_expr(value),
+        };
 
         match var {
             Variable::Register(_) => {
