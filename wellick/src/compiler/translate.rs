@@ -137,7 +137,7 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                 match var {
                     Variable::Stack(var) => {
                         let var_type = match &var.ty {
-                            EmptyType::Pointer(ty) => to_cranelift_type(ty),
+                            EmptyType::Pointer(ty) => to_cranelift_type(&ty.ty),
                             ty => {
                                 unimplemented!(
                                     "unsupported operation, dereferencing type {:?}",
@@ -267,6 +267,28 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                     }
                 },
             },
+            ast::Expression::AddressOf(name) => {
+                // Check that the mutability of the pointer matches the mutability of the data.
+
+                let assign_target = &self
+                    .variables
+                    .get(name)
+                    .expect(format!("No variable named {}", name).as_str())
+                    .clone();
+
+                let var_mutable = match assign_target {
+                    Variable::Stack(stack_var) => stack_var.mutable,
+                    Variable::Register(reg_var) => reg_var.mutable,
+                };
+
+                if let ast::EmptyType::Pointer(ptr) = &expr.var_type {
+                    if !var_mutable && ptr.mutable {
+                        println!("Cannot declare mutable pointer to {}, as it has not been declared mutable", name);
+                        process::exit(1);
+                    }
+                }
+                self.translate_expr(&expr.value)
+            }
             value => self.translate_expr(value),
         };
 
