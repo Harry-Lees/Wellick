@@ -7,6 +7,7 @@ use super::variables::{to_cranelift_type, Variable};
 use cranelift::prelude::AbiParam;
 use cranelift::prelude::InstBuilder;
 use cranelift::prelude::MemFlags;
+use cranelift::prelude::Signature;
 use cranelift_codegen::ir::{entities::Value, types};
 use cranelift_frontend::FunctionBuilder;
 use cranelift_module::{Linkage, Module};
@@ -16,6 +17,7 @@ use std::process;
 
 /// Module to translate AST into Cranelift IR constructs.
 pub struct FunctionTranslator<'a, 'b: 'a> {
+    functions: &'a HashMap<String, ast::FnDecl>,
     pub(crate) builder: FunctionBuilder<'b>,
     pub(crate) variables: HashMap<String, variables::Variable>,
     pub(crate) module: &'a mut ObjectModule,
@@ -23,23 +25,20 @@ pub struct FunctionTranslator<'a, 'b: 'a> {
 
 impl<'a, 'b> FunctionTranslator<'a, 'b> {
     pub fn new(
+        functions: &'a HashMap<String, ast::FnDecl>,
         builder: FunctionBuilder<'b>,
         variables: HashMap<String, variables::Variable>,
         module: &'b mut ObjectModule,
     ) -> Self {
         Self {
+            functions,
             builder,
             variables,
             module,
         }
     }
 
-    pub fn translate_if(
-        &mut self,
-        condition: &ast::Expression,
-        if_body: &Vec<ast::Stmt>,
-        else_body: &Option<Vec<ast::Stmt>>,
-    ) -> Value {
+    pub fn translate_if(&mut self, condition: &ast::Expression, if_body: &Vec<ast::Stmt>) -> Value {
         let then_block = self.builder.create_block();
         let merge_block = self.builder.create_block();
         let cond = self.translate_expr(condition);
@@ -73,9 +72,7 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
     pub fn translate_stmt(&mut self, stmt: &ast::Stmt) -> Value {
         match stmt {
             ast::Stmt::Assign(expr) => self.translate_assign(expr),
-            ast::Stmt::If(condition, body, else_body) => {
-                self.translate_if(condition, body, else_body)
-            }
+            ast::Stmt::If(condition, body) => self.translate_if(condition, body),
             ast::Stmt::Return(expr) => self.translate_return(expr),
             ast::Stmt::Call(expr) => self.translate_call(expr),
             ast::Stmt::ReAssign(expr) => self.translate_reassign(expr),
@@ -115,7 +112,7 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
             ast::Expression::AddressOf(value) => {
                 let var = self
                     .variables
-                    .get(value)
+                    .get(&value.name)
                     .expect("No variable with that name could be found");
 
                 match var {
@@ -137,7 +134,7 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                 match var {
                     Variable::Stack(var) => {
                         let var_type = match &var.ty {
-                            EmptyType::Pointer(ty) => to_cranelift_type(ty),
+                            EmptyType::Pointer(ty) => to_cranelift_type(&ty.ty),
                             ty => {
                                 unimplemented!(
                                     "unsupported operation, dereferencing type {:?}",
@@ -165,15 +162,92 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
     }
 
     fn translate_call(&mut self, expr: &ast::Call) -> Value {
-        let mut sig = self.module.make_signature();
-        let mut arg_values = Vec::new();
-        for arg in &expr.args {
-            let func_arg = self.translate_expr(arg);
-            arg_values.push(func_arg);
-            let arg_type = self.builder.func.dfg.value_type(func_arg);
-            sig.params.push(AbiParam::new(arg_type));
+        let expected_sig = match expr.func.as_str() {
+            "iadd" | "isub" | "idiv" | "imul" | "ieq" | "ilteq" | "ilt" => Signature {
+                params: vec![AbiParam::new(types::I32), AbiParam::new(types::I32)],
+                returns: vec![AbiParam::new(types::I32)],
+                call_conv: self.module.isa().default_call_conv(),
+            },
+            "println" | "print" => Signature {
+                params: vec![AbiParam::new(types::I32)],
+                returns: vec![AbiParam::new(types::I32)],
+                call_conv: self.module.isa().default_call_conv(),
+            },
+            "print_addr" => Signature {
+                params: vec![AbiParam::new(types::I64)],
+                returns: vec![AbiParam::new(types::I64)],
+                call_conv: self.module.isa().default_call_conv(),
+            },
+            _ => {
+                let func = self
+                    .functions
+                    .get(&expr.func)
+                    .expect(format!("function {} not found", expr.func).as_str());
+
+                for (i, param) in expr.args.iter().enumerate() {
+                    match param {
+                        ast::Expression::AddressOf(param_expr) => {
+                            let arg_mutable = match &func.args.get(i).unwrap().t {
+                                ast::EmptyType::Pointer(ptr) => ptr.mutable,
+                                _ => continue,
+                            };
+
+                            if param_expr.mutable && !arg_mutable {
+                                println!(
+                                    "Expected &{}, got &mut {}",
+                                    param_expr.name, param_expr.name
+                                );
+                                process::exit(1);
+                            }
+
+                            if arg_mutable && !param_expr.mutable {
+                                println!(
+                                    "Expected &mut {}, got &{}",
+                                    param_expr.name, param_expr.name
+                                );
+                                process::exit(1);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                Signature {
+                    params: func
+                        .args
+                        .iter()
+                        .map(|arg| AbiParam::new(to_cranelift_type(&arg.t)))
+                        .collect(),
+                    returns: vec![AbiParam::new(to_cranelift_type(&func.ret_type))],
+                    call_conv: self.module.isa().default_call_conv(),
+                }
+            }
+        };
+
+        let (params, arg_values): (Vec<AbiParam>, Vec<Value>) = expr
+            .args
+            .iter()
+            .map(|arg| {
+                let func_arg = self.translate_expr(arg);
+                let arg_type = self.builder.func.dfg.value_type(func_arg);
+                (AbiParam::new(arg_type), func_arg)
+            })
+            .unzip();
+
+        let sig = Signature {
+            params,
+            returns: expected_sig.returns.clone(),
+            call_conv: self.module.isa().default_call_conv(),
+        };
+
+        if sig != expected_sig {
+            println!(
+                "Mismatched types for fn \"{}\", expected \"{}\", got \"{}\"",
+                expr.func, expected_sig, sig
+            );
+            process::exit(1);
         }
-        sig.returns.push(AbiParam::new(types::I32));
+
         let callee = self
             .module
             .declare_function(&expr.func, Linkage::Import, &sig)
@@ -267,6 +341,28 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
                     }
                 },
             },
+            ast::Expression::AddressOf(addr_of) => {
+                // Check that the mutability of the pointer matches the mutability of the data.
+
+                let assign_target = &self
+                    .variables
+                    .get(&addr_of.name)
+                    .expect(format!("No variable named {}", &addr_of.name).as_str())
+                    .clone();
+
+                let var_mutable = match assign_target {
+                    Variable::Stack(stack_var) => stack_var.mutable,
+                    Variable::Register(reg_var) => reg_var.mutable,
+                };
+
+                if let ast::EmptyType::Pointer(ptr) = &expr.var_type {
+                    if !var_mutable && ptr.mutable {
+                        println!("Cannot declare mutable pointer to {}, as it has not been declared mutable", &addr_of.name);
+                        process::exit(1);
+                    }
+                }
+                self.translate_expr(&expr.value)
+            }
             value => self.translate_expr(value),
         };
 

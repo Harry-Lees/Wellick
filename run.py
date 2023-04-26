@@ -29,7 +29,6 @@ if __name__ == "__main__":
 
     result = subprocess.run(["cargo", "run", "--release", args.file], env=env)
     if result.returncode != 0:
-        cprint("Failed to compile", RED)
         exit(result.returncode)
 
     if platform.system() == "Darwin":

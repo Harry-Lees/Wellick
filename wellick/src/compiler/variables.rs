@@ -6,7 +6,6 @@ use cranelift_codegen::ir::{types, Block};
 use cranelift_frontend::FunctionBuilder;
 use cranelift_frontend::Variable as cranelift_Variable;
 use std::collections::HashMap;
-use std::str::FromStr;
 
 /// Helper function to convert the EmptyType AST node to
 /// a valid Cranelift IR type.
@@ -168,7 +167,7 @@ fn declare_variables_in_stmt(
                 variables,
             );
         }
-        ast::Stmt::If(ref _condition, ref if_body, ref else_body) => {
+        ast::Stmt::If(ref _condition, ref if_body) => {
             for stmt in if_body {
                 declare_variables_in_stmt(stmt, builder, index, variables);
             }

@@ -1,12 +1,12 @@
-use super::ast::{EmptyType, FloatType, IntegerType, Name};
+use super::ast::Name;
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, alphanumeric1, multispace0};
-use nom::combinator::{map, recognize};
+use nom::combinator::{opt, recognize};
 use nom::error::ParseError;
 use nom::multi::many0_count;
+use nom::sequence::delimited;
 use nom::sequence::pair;
-use nom::sequence::{delimited, preceded};
 use nom::IResult;
 
 /// From the nom [docs](https://github.com/rust-bakery/nom/blob/main/doc/nom_recipes.md#wrapper-combinators-that-eat-whitespace-before-and-after-a-parser)
@@ -19,6 +19,14 @@ where
     F: Fn(&'a str) -> IResult<&'a str, O, E>,
 {
     delimited(multispace0, inner, multispace0)
+}
+
+pub fn mutable_qualifier(input: &str) -> IResult<&str, bool> {
+    let (i, result) = opt(tag("mut"))(input)?;
+    if result.is_some() {
+        return Ok((i, true));
+    }
+    return Ok((i, false));
 }
 
 /// From the nom [docs](https://github.com/rust-bakery/nom/blob/main/doc/nom_recipes.md#rust-style-identifiers)
@@ -44,23 +52,4 @@ pub fn identifier_to_obj(input: &str) -> IResult<&str, Name> {
             ident: ident.to_string(),
         },
     ))
-}
-
-pub fn arg_type(input: &str) -> IResult<&str, EmptyType> {
-    alt((
-        map(
-            alt((tag("f32"), tag("f64"), tag("i32"), tag("i64"), tag("isize"))),
-            |val| match val {
-                "f32" => EmptyType::Float(FloatType::F32),
-                "f64" => EmptyType::Float(FloatType::F64),
-                "i32" => EmptyType::Integer(IntegerType::I32),
-                "i64" => EmptyType::Integer(IntegerType::I64),
-                "isize" => EmptyType::Integer(IntegerType::PointerSize),
-                _ => unreachable!(),
-            },
-        ),
-        map(preceded(tag("*"), arg_type), |val| {
-            EmptyType::Pointer(Box::new(val))
-        }),
-    ))(input)
 }

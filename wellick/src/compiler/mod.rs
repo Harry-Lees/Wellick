@@ -1,7 +1,11 @@
+mod functions;
 mod translate;
 mod variables;
 
+use std::collections::HashMap;
+
 use crate::parser::ast;
+use functions::build_fn_map;
 
 use cranelift::codegen;
 use cranelift::prelude::AbiParam;
@@ -12,7 +16,6 @@ use cranelift_native::builder as host_isa_builder;
 use cranelift_object::{ObjectBuilder, ObjectModule};
 use std::fs::File;
 use std::io::prelude::Write;
-use std::process;
 
 pub struct Compiler {
     builder_context: FunctionBuilderContext,
@@ -57,7 +60,6 @@ impl Default for Compiler {
 impl Compiler {
     /// Compile a parsed AST
     pub fn compile(mut self, code: Vec<ast::FnDecl>) -> Result<(), String> {
-        //self.decl_stdlib();
         self.translate(code);
 
         // Finish
@@ -66,22 +68,6 @@ impl Compiler {
             Err(_) => return Err("Failed to emit bytecode".to_string()),
         }
 
-        Ok(())
-    }
-
-    /// Create a zero-initialized data section.
-    pub fn create_data(&mut self, name: &str, contents: Vec<u8>) -> Result<(), String> {
-        self.data_context.define(contents.into_boxed_slice());
-        let id = self
-            .module
-            .declare_data(name, Linkage::Export, true, false)
-            .map_err(|e| e.to_string())?;
-
-        self.module
-            .define_data(id, &self.data_context)
-            .map_err(|e| e.to_string())?;
-
-        self.data_context.clear();
         Ok(())
     }
 
@@ -96,12 +82,13 @@ impl Compiler {
     }
 
     fn translate(&mut self, code: Vec<ast::FnDecl>) {
+        let fn_map = build_fn_map(&code);
         for func in code {
-            self.translate_decl(func);
+            self.translate_decl(&fn_map, func);
         }
     }
 
-    fn translate_decl(&mut self, node: ast::FnDecl) {
+    fn translate_decl(&mut self, fn_map: &HashMap<String, ast::FnDecl>, node: ast::FnDecl) {
         // Define function arguments
         for arg in &node.args {
             let t = variables::to_cranelift_type(&arg.t);
@@ -113,20 +100,12 @@ impl Compiler {
         }
 
         // Define the function return type.
-        match &node.ret_type {
-            Some(ret_type) => {
-                let t = variables::to_cranelift_type(&ret_type);
-                self.codegen_context
-                    .func
-                    .signature
-                    .returns
-                    .push(AbiParam::new(t));
-            }
-            None => {
-                println!("No return type defined for func {}", &node.name);
-                process::exit(1)
-            }
-        }
+        let t = variables::to_cranelift_type(&node.ret_type);
+        self.codegen_context
+            .func
+            .signature
+            .returns
+            .push(AbiParam::new(t));
 
         let mut function_builder =
             FunctionBuilder::new(&mut self.codegen_context.func, &mut self.builder_context);
@@ -138,7 +117,7 @@ impl Compiler {
         let vars = variables::declare_variables(&node, &mut function_builder, entry_block);
 
         let mut translator =
-            translate::FunctionTranslator::new(function_builder, vars, &mut self.module);
+            translate::FunctionTranslator::new(&fn_map, function_builder, vars, &mut self.module);
 
         for stmt in node.body {
             translator.translate_stmt(&stmt);

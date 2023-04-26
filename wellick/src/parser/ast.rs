@@ -1,6 +1,5 @@
 use std::{
     fmt::{self, Formatter},
-    option::Option,
     str::FromStr,
 };
 
@@ -59,6 +58,18 @@ pub enum Literal {
 }
 
 #[derive(Debug, Clone)]
+pub struct Pointer {
+    pub ty: EmptyType,
+    pub mutable: bool,
+}
+
+impl Pointer {
+    pub fn new(ty: EmptyType, mutable: bool) -> Self {
+        Pointer { ty, mutable }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum IntegerType {
     I32,
     I64,
@@ -75,7 +86,7 @@ pub enum FloatType {
 pub enum EmptyType {
     Float(FloatType),
     Integer(IntegerType),
-    Pointer(Box<EmptyType>),
+    Pointer(Box<Pointer>),
 }
 
 #[derive(Debug, Clone)]
@@ -121,22 +132,29 @@ impl FnArg {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct AddressOf {
+    pub name: String,
+    pub mutable: bool,
+}
+
+impl AddressOf {
+    pub fn new(name: String, mutable: bool) -> Self {
+        AddressOf { name, mutable }
+    }
+}
+
 /// Function declaration AST node
 #[derive(Debug, Clone)]
 pub struct FnDecl {
     pub name: String,
     pub args: Vec<FnArg>,
-    pub ret_type: Option<EmptyType>,
+    pub ret_type: EmptyType,
     pub body: Vec<Stmt>,
 }
 
 impl FnDecl {
-    pub fn new(
-        name: String,
-        args: Vec<FnArg>,
-        ret_type: Option<EmptyType>,
-        body: Vec<Stmt>,
-    ) -> Self {
+    pub fn new(name: String, args: Vec<FnArg>, ret_type: EmptyType, body: Vec<Stmt>) -> Self {
         Self {
             name,
             args,
@@ -175,7 +193,7 @@ pub enum Expression {
     Identifier(String),
 
     // Address-of a variable e.g. &x; gets the address of x.
-    AddressOf(String),
+    AddressOf(AddressOf),
 
     // de-referencing a variable e.g. *x;
     DeRef(String),
@@ -184,7 +202,7 @@ pub enum Expression {
 #[derive(Debug, Clone)]
 pub enum Stmt {
     Return(Expression),
-    If(Expression, Vec<Stmt>, Option<Vec<Stmt>>),
+    If(Expression, Vec<Stmt>),
     Assign(Assignment),
     ReAssign(Local),
     Call(Call),
