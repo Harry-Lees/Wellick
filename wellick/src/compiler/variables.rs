@@ -167,7 +167,7 @@ fn declare_variables_in_stmt(
                 variables,
             );
         }
-        ast::Stmt::If(ref _condition, ref if_body, ref else_body) => {
+        ast::Stmt::If(ref _condition, ref if_body) => {
             for stmt in if_body {
                 declare_variables_in_stmt(stmt, builder, index, variables);
             }

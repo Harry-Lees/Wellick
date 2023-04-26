@@ -1,5 +1,5 @@
-use super::ast::{Call, Expression, Name};
-use super::helpers::{identifier, identifier_to_obj, ws};
+use super::ast::{AddressOf, Call, Expression, Name};
+use super::helpers::{identifier, identifier_to_obj, mutable_qualifier, ws};
 use super::literals::literal;
 
 use nom::branch::alt;
@@ -34,8 +34,11 @@ pub fn func_call(input: &str) -> IResult<&str, Call> {
     )(input)
 }
 
-pub fn reference(input: &str) -> IResult<&str, Name> {
-    preceded(char('&'), identifier_to_obj)(input)
+pub fn reference(input: &str) -> IResult<&str, AddressOf> {
+    map(
+        tuple((preceded(char('&'), ws(mutable_qualifier)), identifier)),
+        |(mutable, identifier)| AddressOf::new(identifier.to_string(), mutable),
+    )(input)
 }
 
 pub fn dereference(input: &str) -> IResult<&str, Name> {
@@ -48,10 +51,48 @@ pub fn expression(input: &str) -> IResult<&str, Expression> {
         alt((
             map(literal, |x| Expression::Literal(x)),
             map(func_call, |x| Expression::Call(x)),
-            map(reference, |x| Expression::AddressOf(x.ident)),
+            map(reference, |x| Expression::AddressOf(x)),
             map(dereference, |x| Expression::DeRef(x.ident)),
             map(identifier_to_obj, |x| Expression::Identifier(x.ident)),
         )),
         multispace0,
     )(input)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::expressions::{dereference, reference};
+
+    #[test]
+    fn test_deref() -> Result<(), String> {
+        let derefs = ["*x"];
+        for deref in derefs {
+            match dereference(deref) {
+                Ok((remaining, _)) => {
+                    assert_eq!(remaining.len(), 0);
+                }
+                Err(_) => {
+                    return Err(format!("Failed to parse dereference {}", deref));
+                }
+            }
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_ref() -> Result<(), String> {
+        let refs = ["&x", "&mut x"];
+
+        for ref_ in refs {
+            match reference(ref_) {
+                Ok((remaining, _)) => {
+                    assert_eq!(remaining.len(), 0);
+                }
+                Err(_) => {
+                    return Err(format!("Failed to parse ref {}", ref_));
+                }
+            }
+        }
+        Ok(())
+    }
 }
