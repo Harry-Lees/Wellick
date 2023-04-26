@@ -24,7 +24,10 @@ pub fn if_stmt(input: &str) -> IResult<&str, (Expression, Vec<Stmt>, Option<Vec<
 fn function_args(input: &str) -> IResult<&str, Vec<FnArg>> {
     map(
         terminated(
-            separated_list0(tag(","), separated_pair(identifier, ws(tag(":")), arg_type)),
+            separated_list0(
+                ws(tag(",")),
+                separated_pair(identifier, ws(tag(":")), arg_type),
+            ),
             opt(tag(",")),
         ),
         |args| {
@@ -99,4 +102,35 @@ pub fn stmt(input: &str) -> IResult<&str, Stmt> {
         map(terminated(reassign, ws(char(';'))), |x| Stmt::ReAssign(x)),
         map(terminated(assignment, ws(char(';'))), |x| Stmt::Assign(x)),
     ))(input)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::stmts::{function, reassign};
+
+    #[test]
+    fn test_parse_reassign() {
+        let code = "x = 10";
+        reassign(code).unwrap();
+    }
+
+    #[test]
+    fn test_parse_empty_decl() {
+        let code = "fn main() {}";
+        function(code).unwrap();
+    }
+
+    #[test]
+    fn test_parse_decl_with_args() {
+        let declarations = [
+            "fn main(x: i32) {}",
+            "fn main(x: i32, y: i32) {}",
+            "fn main(x: i32, y: i64) {}",
+            "fn main(x: i32, y: i32, z: i32) {}",
+        ];
+
+        for declaration in declarations {
+            function(declaration).unwrap();
+        }
+    }
 }
