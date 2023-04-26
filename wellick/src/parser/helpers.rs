@@ -1,4 +1,4 @@
-use super::ast::{EmptyType, FloatType, IntegerType, Name};
+use super::ast::{EmptyType, FloatType, IntegerType, Name, Pointer};
 use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::{alpha1, alphanumeric1, multispace0};
@@ -60,7 +60,7 @@ pub fn arg_type(input: &str) -> IResult<&str, EmptyType> {
             },
         ),
         map(preceded(tag("*"), arg_type), |val| {
-            EmptyType::Pointer(Box::new(val))
+            EmptyType::Pointer(Box::new(Pointer::new(val, false)))
         }),
     ))(input)
 }

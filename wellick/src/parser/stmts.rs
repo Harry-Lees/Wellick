@@ -1,4 +1,4 @@
-use super::ast::{Assignment, Expression, Local, Stmt};
+use super::ast::{Assignment, EmptyType, Expression, FloatType, IntegerType, Local, Pointer, Stmt};
 use super::ast::{FnArg, FnDecl};
 use super::expressions::{expression, func_call};
 use super::helpers::{arg_type, identifier, identifier_to_obj, ws};
@@ -10,6 +10,26 @@ use nom::combinator::{map, opt};
 use nom::multi::{many0, separated_list0};
 use nom::sequence::{delimited, preceded, separated_pair, terminated, tuple};
 use nom::IResult;
+
+pub fn assign_type(input: &str) -> IResult<&str, EmptyType> {
+    alt((
+        map(
+            alt((tag("f32"), tag("f64"), tag("i32"), tag("i64"), tag("isize"))),
+            |val| match val {
+                "f32" => EmptyType::Float(FloatType::F32),
+                "f64" => EmptyType::Float(FloatType::F64),
+                "i32" => EmptyType::Integer(IntegerType::I32),
+                "i64" => EmptyType::Integer(IntegerType::I64),
+                "isize" => EmptyType::Integer(IntegerType::PointerSize),
+                _ => unreachable!(),
+            },
+        ),
+        map(
+            tuple((preceded(ws(tag("*")), ws(mutable_qualifier)), arg_type)),
+            |(mutable, val)| EmptyType::Pointer(Box::new(Pointer::new(val, mutable))),
+        ),
+    ))(input)
+}
 
 pub fn if_stmt(input: &str) -> IResult<&str, (Expression, Vec<Stmt>, Option<Vec<Stmt>>)> {
     map(
@@ -70,7 +90,7 @@ pub fn assignment(input: &str) -> IResult<&str, Assignment> {
             tuple((
                 ws(mutable_qualifier),
                 identifier_to_obj,
-                preceded(ws(tag(":")), arg_type),
+                preceded(ws(tag(":")), assign_type),
                 ws(char('=')),
                 expression,
             )),
@@ -106,7 +126,8 @@ pub fn stmt(input: &str) -> IResult<&str, Stmt> {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::stmts::{function, reassign};
+    use crate::parser::ast;
+    use crate::parser::stmts::{assignment, function, reassign};
 
     #[test]
     fn test_parse_reassign() {
@@ -132,5 +153,34 @@ mod tests {
         for declaration in declarations {
             function(declaration).unwrap();
         }
+    }
+
+    #[test]
+    fn test_parse_assignment() {
+        let assignments = [
+            "let x: i32 = 10;",
+            "let mut x: i32 = 10;",
+            "let mut y: i32 = &x;",
+            "let mut y: *i32 = &x;",
+            "let mut y: *mut i32 = &x;",
+        ];
+
+        for assign in assignments {
+            assignment(assign).unwrap();
+        }
+    }
+
+    #[test]
+    fn test_mutable_ptr() {
+        let (_, ast) = assignment("let mut y: *mut i32 = &x").unwrap();
+        assert!(ast.mutable);
+        match ast.var_type {
+            ast::EmptyType::Pointer(ptr) => {
+                assert!(ptr.mutable);
+            }
+            _ => {
+                unreachable!("ptr assignment parsed as incorrect type");
+            }
+        };
     }
 }

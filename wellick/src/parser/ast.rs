@@ -59,6 +59,18 @@ pub enum Literal {
 }
 
 #[derive(Debug, Clone)]
+pub struct Pointer {
+    pub ty: EmptyType,
+    pub mutable: bool,
+}
+
+impl Pointer {
+    pub fn new(ty: EmptyType, mutable: bool) -> Self {
+        Pointer { ty, mutable }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum IntegerType {
     I32,
     I64,
@@ -75,7 +87,7 @@ pub enum FloatType {
 pub enum EmptyType {
     Float(FloatType),
     Integer(IntegerType),
-    Pointer(Box<EmptyType>),
+    Pointer(Box<Pointer>),
 }
 
 #[derive(Debug, Clone)]
