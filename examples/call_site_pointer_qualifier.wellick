@@ -1,0 +1,9 @@
+fn foo(x: *mut i32) -> isize {
+    return x;
+}
+
+fn main() -> i32 {
+    let mut x: i32 = 10;
+    print_addr(foo(&mut x));
+    return 0;
+}
