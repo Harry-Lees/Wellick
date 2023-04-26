@@ -63,3 +63,17 @@ fn float(input: &str) -> IResult<&str, Literal> {
 pub fn literal(input: &str) -> IResult<&str, Literal> {
     alt((float, hexadecimal, octal, decimal))(input)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::literals::literal;
+
+    #[test]
+    fn test_parse_literals() {
+        let expressions = ["0", "10", "0x10", "0x1F", "0x1f", "0o10", "10.0"];
+
+        for expr in expressions {
+            literal(expr).unwrap();
+        }
+    }
+}
