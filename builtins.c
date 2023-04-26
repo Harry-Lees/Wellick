@@ -18,8 +18,12 @@ int32_t println_32(int32_t inp) {
     return printf("%d\n", inp);
 }
 
-int32_t hex_println(int32_t inp) {
+int32_t println_hex(int32_t inp) {
     return printf("0x%X\n", inp);
+}
+
+int64_t print_addr(int64_t inp) {
+    return printf("0x%" PRIX64 "\n", inp);
 }
 
 // Print a string to stdout with a newline
