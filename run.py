@@ -40,8 +40,10 @@ if __name__ == "__main__":
     if platform.system() == "Windows":
         if compile_stdlib:
             cprint("Compiling stdlib", GREEN)
-            os.unlink("builtins.obj")
-            os.unlink("builtins.dll")
+            if os.path.isfile("builtins.obj"):
+                os.unlink("builtins.obj")
+            if os.path.isfile("builtins.dll"):
+                os.unlink("builtins.dll")
             subprocess.check_call(["cl", "builtins.c", "/LD", "/MD", "/Wall"])
         subprocess.check_call(["LINK", outfile, "builtins", "/SUBSYSTEM:CONSOLE"])
         result = subprocess.run(["a.exe"])
