@@ -51,6 +51,10 @@ int32_t idiv(int32_t a, int32_t b) {
     return a / b;
 }
 
+int32_t imod(int32_t a, int32_t b) {
+    return a % b;
+}
+
 // Check the equality of two integers, return 1 if true, 0 if false
 int32_t ieq (int32_t a, int32_t b) {
     return a == b;
