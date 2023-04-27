@@ -1,27 +1,26 @@
+import os
 import platform
 import subprocess
+from os import PathLike
 from pathlib import Path
 
 import pytest
 
 
-def run_example(file: str) -> tuple[bytes, bytes, int]:
+def run_example(file: PathLike) -> tuple[bytes, bytes, int]:
     """
     Run an example and check that it compiles.
 
     Returns a tuple of stdout, stderr, and the return code.
     """
 
-    root = Path(__file__).parent.parent
-    file_path = root / "examples" / file
-
-    compiler_output = subprocess.run(["cargo", "run", "--release", str(file_path)])
+    compiler_output = subprocess.run(["cargo", "run", "--release", str(file)])
     if compiler_output.returncode != 0:
         raise RuntimeError("Failed to compile")
 
     if platform.system() == "Windows":
-        subprocess.check_call(["LINK", "a.out", "builtins", "/MD", "/Wall"])
-        result = subprocess.run(["a.exe"])
+        result = subprocess.run(["LINK", "a.out", "builtins", "/MD", "/Wall"], shell=True)
+        result = subprocess.run(["a.exe"], shell=True)
         return result.stdout, result.stderr, result.returncode
 
     raise NotImplementedError(
@@ -29,15 +28,28 @@ def run_example(file: str) -> tuple[bytes, bytes, int]:
     )
 
 
-def test_builtins() -> None:
+@pytest.mark.parametrize("file", [
+    "fibonacci.wellick",
+    "pointer_qualifier.wellick",
+    "iadd_builtin.wellick",
+    "isub_builtin.wellick",
+    "imul_builtin.wellick",
+    "ptr_type.wellick",
+])
+def test_pass_examples(file: str) -> None:
     """Test that the builtins example compiles."""
-    file = "builtins.wellick"
-    stdout, stderr, retcode = run_example(file)
-    assert retcode == 20
+    root = Path(__file__).parent
+    file_path = root / "pass_examples" / file
+
+    stdout, stderr, retcode = run_example(file_path)
+    assert retcode == 0
 
 
-def test_default_const() -> None:
+@pytest.mark.parametrize("file", ["default_const.wellick"])
+def test_fail_examples(file: str) -> None:
     """Test that the default_const example compiles."""
-    file = "default_const.wellick"
+    root = Path(__file__).parent
+    file_path = root / "fail_examples" / file
+
     with pytest.raises(RuntimeError):
-        stdout, stderr, retcode = run_example(file)
+        stdout, stderr, retcode = run_example(file_path)
