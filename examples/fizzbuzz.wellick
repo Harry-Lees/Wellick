@@ -1,0 +1,30 @@
+fn impl(num: i32, counter: i32) -> i32 {
+    if ieq(counter, num) {
+        return 0;
+    }
+
+    if ieq(imod(counter, 3), 0) {
+        if ieq(imod(counter, 5), 0) {
+            println(35);
+        }
+    }
+
+    if ieq(imod(counter, 5), 0) {
+        println(5);
+    }
+
+    if ieq(imod(counter, 3), 0) {
+        println(3);
+    }
+    return impl(num, iadd(counter, 1));
+}
+
+fn fizzbuzz(num: i32) -> i32 {
+    impl(num, 1);
+    return 0;
+}
+
+fn main() -> i32 {
+    fizzbuzz(100);
+    return 0;
+}
