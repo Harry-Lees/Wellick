@@ -48,25 +48,27 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
         self.builder.switch_to_block(then_block);
         self.builder.seal_block(then_block);
 
-        let mut then_return: Option<Value> = None;
-        for expr in if_body {
-            match expr {
+        for stmt in if_body {
+            match stmt {
                 // If a terminator expression, like return, is encountered, we don't
                 // need to process the rest of the instructions since they're automatically
                 // unreachable code.
-                ast::Stmt::Return(stmt) => {
-                    then_return = Some(self.translate_return(stmt));
-                    break;
+                ast::Stmt::Return(_) => {
+                    self.translate_stmt(&stmt);
+                    self.builder.switch_to_block(merge_block);
+                    self.builder.seal_block(merge_block);
+                    return self.builder.ins().iconst(types::I32, 0);
                 }
-                stmt => then_return = Some(self.translate_stmt(stmt)),
+                _ => {
+                    self.translate_stmt(&stmt);
+                }
             }
         }
-        if then_return.is_none() {
-            panic!("If statement has no body");
-        }
 
+        self.builder.ins().jump(merge_block, &[]);
         self.builder.switch_to_block(merge_block);
-        then_return.unwrap()
+        self.builder.seal_block(merge_block);
+        self.builder.ins().iconst(types::I32, 0)
     }
 
     pub fn translate_stmt(&mut self, stmt: &ast::Stmt) -> Value {
@@ -163,7 +165,7 @@ impl<'a, 'b> FunctionTranslator<'a, 'b> {
 
     fn translate_call(&mut self, expr: &ast::Call) -> Value {
         let expected_sig = match expr.func.as_str() {
-            "iadd" | "isub" | "idiv" | "imul" | "ieq" | "ilteq" | "ilt" => Signature {
+            "iadd" | "isub" | "idiv" | "imul" | "ieq" | "ilteq" | "ilt" | "imod" => Signature {
                 params: vec![AbiParam::new(types::I32), AbiParam::new(types::I32)],
                 returns: vec![AbiParam::new(types::I32)],
                 call_conv: self.module.isa().default_call_conv(),
