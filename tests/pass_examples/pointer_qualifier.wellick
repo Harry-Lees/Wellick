@@ -1,0 +1,6 @@
+fn main() -> i32 {
+    let mut x: i32 = x;
+    let mut y: *mut i32 = &x;
+    print_addr(y);
+    return 0;
+}

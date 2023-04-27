@@ -1,0 +1,13 @@
+fn fibonacci(n: i32) -> i32 {
+    if ilteq(n, 1) {
+        return n;
+    }
+    let x: i32 = fibonacci(isub(n, 1));
+    let y: i32 = fibonacci(isub(n, 2));
+    return iadd(x, y);
+}
+
+fn main() -> i32 {
+    println(fibonacci(40));
+    return 0;
+}
